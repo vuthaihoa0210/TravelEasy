@@ -15,6 +15,7 @@ export default function Register() {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const [receivedOtp, setReceivedOtp] = useState('');
 
   // Step 1: Request OTP
   const onSendOtp = async (values: any) => {
@@ -32,7 +33,8 @@ export default function Register() {
       setLoading(false);
 
       if (res.ok) {
-        message.success(data.message || 'Mã xác nhận đã được gửi!', 30); // Hiển thị trong 30 giây
+        // message.success(data.message || 'Mã xác nhận đã được gửi!', 30); // Hiển thị trong 30 giây
+        setReceivedOtp(data.message || '');
         setUserEmail(email);
         setCurrentStep(1);
       } else {
@@ -165,6 +167,11 @@ export default function Register() {
                   <div style={{ textAlign: 'center', marginBottom: 20 }}>
                     <Text>Mã OTP đã được gửi đến:</Text><br/>
                     <Text strong style={{ color: '#1677ff' }}>{userEmail}</Text>
+                    {receivedOtp && (
+                      <div style={{ marginTop: 12, padding: '12px', background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 8 }}>
+                        <Text strong style={{ color: '#52c41a', fontSize: 16 }}>{receivedOtp}</Text>
+                      </div>
+                    )}
                   </div>
                   <Form.Item
                     name="otp"
@@ -187,7 +194,7 @@ export default function Register() {
                     </Button>
                   </Form.Item>
                   <div style={{ textAlign: 'center' }}>
-                    <Button type="link" onClick={() => setCurrentStep(0)} disabled={loading}>
+                    <Button type="link" onClick={() => { setCurrentStep(0); setReceivedOtp(''); }} disabled={loading}>
                       Quay lại sửa thông tin
                     </Button>
                   </div>
