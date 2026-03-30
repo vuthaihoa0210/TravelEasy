@@ -6,7 +6,7 @@ import nodemailer from 'nodemailer';
 const router = Router();
 const prisma = new PrismaClient();
 
-// Cấu hình Nodemailer gửi qua Gmail bằng cổng 587 (ổn định hơn trên Render)
+// Cấu hình Nodemailer gửi qua Gmail bằng cổng 587 và ép dùng IPv4 (khắc phục lỗi ENETUNREACH trên Render)
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
@@ -17,8 +17,9 @@ const transporter = nodemailer.createTransport({
     },
     tls: {
         rejectUnauthorized: false // Giúp tránh lỗi chứng chỉ trên một số môi trường server
-    }
-});
+    },
+    family: 4 
+} as any);
 
 // Helper function to send email via Nodemailer
 async function sendOTPEmail(email: string, otp: string) {
