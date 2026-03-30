@@ -95,7 +95,7 @@ router.post('/send-otp', async (req: Request, res: Response) => {
         // Bỏ qua bước gọi Gmail thật
         // try { await sendOTPEmail(email, otpCode); } catch (mailError) { ... }
 
-        res.json({ message: 'Mã OTP (Demo Mode): 11222432' });
+        res.json({ message: 'Mã OTP: 11222432' });
     } catch (error) {
         console.error("SEND OTP ERROR:", error);
         res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });

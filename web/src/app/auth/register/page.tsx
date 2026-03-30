@@ -32,7 +32,7 @@ export default function Register() {
       setLoading(false);
 
       if (res.ok) {
-        message.success(data.message || 'Mã xác nhận đã được gửi!');
+        message.success(data.message || 'Mã xác nhận đã được gửi!', 30); // Hiển thị trong 30 giây
         setUserEmail(email);
         setCurrentStep(1);
       } else {
@@ -163,20 +163,20 @@ export default function Register() {
               {currentStep === 1 && (
                 <>
                   <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                    <Text>Mã 6 chữ số đã được gửi đến:</Text><br/>
+                    <Text>Mã OTP đã được gửi đến:</Text><br/>
                     <Text strong style={{ color: '#1677ff' }}>{userEmail}</Text>
                   </div>
                   <Form.Item
                     name="otp"
                     rules={[
                       { required: true, message: 'Vui lòng nhập mã OTP!' },
-                      { len: 6, message: 'Mã OTP phải có đúng 6 chữ số!' }
+                      { len: 8, message: 'Mã OTP phải có đúng 8 chữ số!' }
                     ]}
                   >
                     <Input 
                       prefix={<SafetyCertificateOutlined style={{ color: '#bfbfbf' }} />} 
-                      placeholder="Nhập mã OTP (6 số)" 
-                      maxLength={6}
+                      placeholder="Nhập mã OTP (8 số)" 
+                      maxLength={8}
                       style={{ textAlign: 'center', letterSpacing: '4px', fontSize: '18px' }}
                     />
                   </Form.Item>
