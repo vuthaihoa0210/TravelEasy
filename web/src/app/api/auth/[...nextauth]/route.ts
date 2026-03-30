@@ -4,6 +4,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 export const authOptions = {
   providers: [
     CredentialsProvider({
+      id: 'credentials', // Phải có id này
       name: 'credentials',
       credentials: {
         email: { label: 'Email', type: 'email' },
@@ -32,6 +33,7 @@ export const authOptions = {
       },
     }),
   ],
+  secret: process.env.NEXTAUTH_SECRET, // Đảm bảo bí mật được khai báo trực tiếp ở đây
   callbacks: {
     async jwt({ token, user }: any) {
       if (user) {
