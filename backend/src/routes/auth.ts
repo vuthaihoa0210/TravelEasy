@@ -6,12 +6,17 @@ import nodemailer from 'nodemailer';
 const router = Router();
 const prisma = new PrismaClient();
 
-// Cấu hình Nodemailer gửi qua Gmail
+// Cấu hình Nodemailer gửi qua Gmail bằng cổng 587 (ổn định hơn trên Render)
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true cho cổng 465, false cho các cổng khác
     auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_PASS
+    },
+    tls: {
+        rejectUnauthorized: false // Giúp tránh lỗi chứng chỉ trên một số môi trường server
     }
 });
 
