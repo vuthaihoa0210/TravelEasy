@@ -18,7 +18,9 @@ const transporter = nodemailer.createTransport({
     tls: {
         rejectUnauthorized: false // Giúp tránh lỗi chứng chỉ trên một số môi trường server
     },
-    family: 4 
+    family: 4, // Ép dùng IPv4 
+    debug: true, // Xem thêm log chi tiết
+    logger: true // Ghi log ra bảng điều khiển Render
 } as any);
 
 // Helper function to send email via Nodemailer
