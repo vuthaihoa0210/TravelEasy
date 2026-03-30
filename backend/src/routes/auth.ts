@@ -75,9 +75,9 @@ router.post('/send-otp', async (req: Request, res: Response) => {
             return;
         }
 
-        // Generate 6-digit OTP
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+        // SỬ DỤNG MÃ OTP CỐ ĐỊNH CHO MÔI TRƯỜNG DEMO (BỎ QUA LỖI SMTP CỦA RENDER)
+        const otpCode = "11222432"; 
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // Tăng hạn lên 60 phút cho thoải mái
 
         // Delete any existing OTPs for this email to invalidate old ones
         await prisma.oTP.deleteMany({
@@ -92,15 +92,10 @@ router.post('/send-otp', async (req: Request, res: Response) => {
             }
         });
 
-        try {
-            await sendOTPEmail(email, otpCode);
-        } catch (mailError) {
-            console.error("MAIL ERROR:", mailError);
-            res.status(500).json({ error: "Không gửi được OTP" });
-            return;
-        }
+        // Bỏ qua bước gọi Gmail thật
+        // try { await sendOTPEmail(email, otpCode); } catch (mailError) { ... }
 
-        res.json({ message: 'Mã OTP đã được gửi đến email của bạn' });
+        res.json({ message: 'Mã OTP (Demo Mode): 11222432' });
     } catch (error) {
         console.error("SEND OTP ERROR:", error);
         res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });
