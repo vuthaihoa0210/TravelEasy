@@ -2,7 +2,7 @@
 
 import { Card, Col, Input, Row, Space, Tag, Typography, Select, Pagination, Button, Tabs, Slider, Spin } from 'antd';
 import { SearchOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 const { Title, Paragraph, Text } = Typography;
@@ -29,7 +29,7 @@ const removeAccents = (str: string) => {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
 };
 
-export default function HotelsPage() {
+function HotelsContent() {
   const router = useRouter();
   const [hotels, setHotels] = useState<Destination[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,3 +207,11 @@ export default function HotelsPage() {
     </div>
   );
 }
+
+export default function HotelsPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: '100px', textAlign: 'center' }}><Spin size="large" /></div>}>
+      <HotelsContent />
+    </Suspense>
+  );
+}
