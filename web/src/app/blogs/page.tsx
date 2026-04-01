@@ -6,7 +6,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
 const { Title, Paragraph, Text } = Typography;
-const PAGE_SIZE = 9;
+const PAGE_SIZE = 8;
 
 interface Blog {
   id: number;
@@ -27,11 +27,12 @@ export default function BlogsPage() {
     fetch('/api/blogs')
       .then(res => res.json())
       .then(data => {
-        setBlogs(data);
+        setBlogs(Array.isArray(data) ? data : []);
         setLoading(false);
       })
       .catch(err => {
         console.error(err);
+        setBlogs([]);
         setLoading(false);
       });
   }, []);
@@ -54,7 +55,7 @@ export default function BlogsPage() {
   }
 
   return (
-    <div className="section" style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 20px' }}>
+    <div className="section" style={{ maxWidth: 1200, margin: '0 auto', padding: '140px 20px 80px' }}>
       <header style={{ textAlign: 'center', marginBottom: 50 }}>
         <Title>Cẩm nang & Kinh nghiệm du lịch</Title>
         <Paragraph type="secondary" style={{ fontSize: 18 }}>
@@ -62,48 +63,52 @@ export default function BlogsPage() {
         </Paragraph>
       </header>
 
-      <Row gutter={[24, 24]}>
+      <Row gutter={[20, 20]}>
         {pagedBlogs.map((post) => (
-          <Col xs={24} sm={12} md={8} key={post.id}>
+          <Col xs={24} sm={12} lg={6} key={post.id}>
             <Card
               hoverable
               onClick={() => router.push(`/blogs/${post.id}`)}
-              style={{ height: '100%', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+              className="group border-none shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden rounded-2xl flex flex-col bg-white"
               styles={{ body: { padding: 20, flex: 1, display: 'flex', flexDirection: 'column' } }}
               cover={
-                <div style={{ height: 200, overflow: 'hidden' }}>
+                <div className="relative h-48 overflow-hidden">
                   <img
                     alt={post.title}
                     src={post.images?.[0] || 'https://via.placeholder.com/400x200?text=No+Image'}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s' }}
-                    onMouseOver={e => (e.currentTarget.style.transform = 'scale(1.05)')}
-                    onMouseOut={e => (e.currentTarget.style.transform = 'scale(1)')}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
+                  <div className="absolute top-4 left-4">
+                     <Tag className="m-0 border-none bg-blue-600 text-white font-bold text-[10px] px-3 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-blue-500/20">Bài viết</Tag>
+                  </div>
                 </div>
               }
             >
-              <div style={{ flex: 1 }}>
-                <div style={{ marginBottom: 12 }}>
-                  <Tag color="blue">Kinh nghiệm</Tag>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    <CalendarOutlined style={{ marginRight: 4 }} />
+              <div className="flex-1 space-y-3">
+                 <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                    <CalendarOutlined className="text-blue-500" />
                     {new Date(post.createdAt).toLocaleDateString('vi-VN')}
-                  </Text>
-                </div>
-                <Title level={4} style={{ marginBottom: 12, lineHeight: 1.4, height: 55, overflow: 'hidden' }}>
-                  {post.title}
-                </Title>
-                <Paragraph type="secondary" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 0 }}>
-                  {post.content}
-                </Paragraph>
+                 </div>
+                 
+                 <h3 className="text-[17px] font-bold text-slate-900 leading-snug line-clamp-2 h-12 group-hover:text-blue-600 transition-colors">
+                   {post.title}
+                 </h3>
+                 
+                 <p className="text-[13px] text-slate-400 leading-relaxed line-clamp-2 font-light">
+                   {post.content}
+                 </p>
               </div>
-              <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text type="secondary" style={{ fontSize: 13 }}>
-                  <UserOutlined style={{ marginRight: 4 }} /> {post.author}
-                </Text>
-                <Text style={{ color: '#1677ff', fontWeight: 600 }}>
-                  Đọc thêm <ArrowRightOutlined style={{ fontSize: 11 }} />
-                </Text>
+
+              <div className="mt-6 pt-5 border-t border-slate-50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                   <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 font-bold">
+                     {post.author?.[0] || 'A'}
+                   </div>
+                   <Text type="secondary" className="text-[11px] font-medium">{post.author}</Text>
+                </div>
+                <div className="flex items-center gap-1.5 text-blue-600 font-bold text-[11px] uppercase tracking-wider group-hover:gap-2.5 transition-all">
+                  Xem chi tiết <ArrowRightOutlined />
+                </div>
               </div>
             </Card>
           </Col>

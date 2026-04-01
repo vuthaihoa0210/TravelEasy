@@ -24,18 +24,25 @@ export default function BlogDetailPage({ params }: { params: any }) {
       .then(data => {
         setBlog(data);
         setLoading(false);
+      })
+      .catch(() => {
+        setBlog(null);
+        setLoading(false);
       });
 
     // Fetch recent blogs for sidebar
     fetch(`/api/blogs`)
       .then(res => res.json())
       .then(data => {
-        setRecentBlogs(data.slice(0, 5));
+        setRecentBlogs(Array.isArray(data) ? data.slice(0, 5) : []);
+      })
+      .catch(() => {
+        setRecentBlogs([]);
       });
   }, [id]);
 
   if (loading) return (
-    <div style={{ padding: 100, textAlign: 'center' }}>
+    <div style={{ padding: 200, textAlign: 'center' }}>
       <Spin size="large">
         <div style={{ marginTop: 45 }}>Đang tải bài viết...</div>
       </Spin>
@@ -50,7 +57,7 @@ export default function BlogDetailPage({ params }: { params: any }) {
   );
 
   return (
-    <div className="section" style={{ background: '#f8fafc', minHeight: '100vh', padding: '40px 0' }}>
+    <div className="section" style={{ background: '#f8fafc', minHeight: '100vh', padding: '140px 0 80px' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px' }}>
         <Breadcrumb style={{ marginBottom: 24 }} items={[
           { title: <a onClick={() => router.push('/')}>Trang chủ</a> },

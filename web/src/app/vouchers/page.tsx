@@ -76,53 +76,10 @@ export default function VouchersPage() {
         );
     }
 
-    if (!session) {
-        return (
-            <Content style={{ padding: '80px 20px', maxWidth: 800, margin: '0 auto', textAlign: 'center' }}>
-                <Card style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-                    <div style={{ marginBottom: 24 }}>
-                        <div style={{
-                            width: 80,
-                            height: 80,
-                            background: '#f0f5ff',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto 20px'
-                        }}>
-                            <RocketOutlined style={{ fontSize: 40, color: '#1677ff' }} />
-                        </div>
-                        <Title level={3}>Ưu Đãi Đặc Biệt ĐANG Chờ Bạn!</Title>
-                        <Paragraph type="secondary" style={{ fontSize: 16 }}>
-                            Vui lòng đăng nhập để xem và sử dụng các mã giảm giá hấp dẫn dành riêng cho thành viên TravelEasy.
-                        </Paragraph>
-                    </div>
-                    <Space size="large">
-                        <Button
-                            type="primary"
-                            size="large"
-                            icon={<RocketOutlined />}
-                            style={{ height: 48, borderRadius: 8, padding: '0 32px' }}
-                            onClick={() => router.push('/auth/signin')}
-                        >
-                            Đăng Nhập Ngay
-                        </Button>
-                        <Button
-                            size="large"
-                            style={{ height: 48, borderRadius: 8, padding: '0 32px' }}
-                            onClick={() => router.push('/auth/register')}
-                        >
-                            Đăng Ký
-                        </Button>
-                    </Space>
-                </Card>
-            </Content>
-        );
-    }
+<div />
 
     return (
-        <Content style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto' }}>
+        <Content style={{ padding: '160px 20px 80px', maxWidth: 1200, margin: '0 auto' }}>
             <div style={{ marginBottom: 32, textAlign: 'center' }}>
                 <Title level={2}>Kho Ưu Đãi Của Bạn</Title>
                 <Paragraph type="secondary">Khám phá các mã giảm giá hấp dẫn dành riêng cho bạn</Paragraph>

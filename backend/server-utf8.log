@@ -1,0 +1,68 @@
+﻿
+> traveleasy-backend@1.0.0 dev
+> tsx watch src/index.ts
+
+[2026-04-01 14:11:22] DEBUG Creating transport: nodemailer (8.0.3; +https://nodemailer.com/; SMTP/8.0.3[client:8.0.3])
+Server is running at http://localhost:4000
+node.exe : [FULL GEMINI 
+ERROR] {
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified: ([FU  
+  LL GEMINI ERROR] {:Str   
+ ing) [], RemoteExcepti    
+on
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+  "error": {
+    "code": 400,
+    "message": "API key 
+not valid. Please pass a 
+valid API key.",
+    "status": 
+"INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.goog
+leapis.com/google.rpc.Error
+Info",
+        "reason": 
+"API_KEY_INVALID",
+        "domain": 
+"googleapis.com",
+        "metadata": {
+          "service": "gener
+ativelanguage.googleapis.co
+m"
+        }
+      },
+      {
+        "@type": "type.goog
+leapis.com/google.rpc.Local
+izedMessage",
+        "locale": "en-US",
+        "message": "API 
+key not valid. Please pass 
+a valid API key."
+      }
+    ]
+  }
+}
+[AI CHAT ERROR] Error: 
+Gemini API request failed
+    at <anonymous> (C:\User
+s\Admin\Desktop\TravelEasy\
+backend\src\routes\ai.ts:65
+:13)
+    at process.processTicks
+AndRejections (node:interna
+l/process/task_queues:104:5
+)

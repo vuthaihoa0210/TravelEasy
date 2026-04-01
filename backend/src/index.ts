@@ -15,6 +15,7 @@ import bookingRoutes from './routes/bookings';
 import voucherRoutes from './routes/vouchers';
 import reviewRoutes from './routes/reviews';
 import blogRoutes from './routes/blogs';
+import aiRoutes from './routes/ai';
 import { createChatRouter } from './routes/chat';
 
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/vouchers', voucherRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/blogs', blogRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api/chat', createChatRouter(io));
 
 app.get('/', (req: Request, res: Response) => {

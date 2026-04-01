@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -113,7 +114,9 @@ function renderText(text: string) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ChatBot() {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<'ai' | 'live'>('ai');
   const [unread, setUnread] = useState(1);
 
@@ -149,6 +152,26 @@ export default function ChatBot() {
       setUnread(0);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
+  }, [open]);
+
+  // Close on pathname change (navigation)
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // Handle Click Outside
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        // Find toggle button
+        const btn = document.getElementById('chatbot-toggle-button');
+        if (btn && btn.contains(event.target as Node)) return;
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
   // Connect Socket.IO for live chat
@@ -233,18 +256,31 @@ export default function ChatBot() {
     if (open && mode === 'live') setLiveUnread(0);
   }, [open, mode]);
 
-  // ── AI send ──
+  // ── AI send (Ngon ngữ ngố ngố ban đầu) ──
   const sendAi = (text: string) => {
     if (!text.trim()) return;
     const userMsg: Message = { id: Date.now(), role: 'user', text: text.trim(), time: getTime() };
     setAiMessages(prev => [...prev, userMsg]);
     setAiInput('');
     setTyping(true);
+
     setTimeout(() => {
-      const botText = getBotResponse(text.trim());
+      let botText = "Chào bạn! Mình có thể giúp gì cho bạn về các tour du lịch, vé máy bay hay khách sạn không?";
+      const lower = text.toLowerCase();
+      
+      if (lower.includes("tour")) {
+        botText = "Hiện TravelEasy đang có rất nhiều tour khuyến mãi hấp dẫn. Bạn có thể xem tại mục [tour du lịch](/tours) nhé!";
+      } else if (lower.includes("vé") || lower.includes("máy bay")) {
+        botText = "Vé máy bay của chúng tôi luôn có giá cạnh tranh nhất. Bạn kiểm tra tại mục [vé máy bay](/flights) nha.";
+      } else if (lower.includes("khách sạn")) {
+        botText = "Hệ thống có hơn 1000 khách sạn liên kết, xem tại [khách sạn](/hotels) bạn nhé!";
+      } else if (lower.includes("liên hệ") || lower.includes("gặp người")) {
+        botText = "Dạ, để gặp nhân viên hỗ trợ, bạn vui lòng chuyển sang tab 'Trực tuyến' phía trên nhé!";
+      }
+
       setAiMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', text: botText, time: getTime() }]);
       setTyping(false);
-    }, 800 + Math.random() * 500);
+    }, 800);
   };
 
   // ── Live send ──
@@ -267,14 +303,15 @@ export default function ChatBot() {
     <>
       {/* Floating Button */}
       <button
+        id="chatbot-toggle-button"
         onClick={() => setOpen(o => !o)}
         style={{
-          position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
-          width: 60, height: 60, borderRadius: '50%', border: 'none', cursor: 'pointer',
+          position: 'fixed', bottom: 20, right: 20, zIndex: 9999,
+          width: 52, height: 52, borderRadius: '50%', border: 'none', cursor: 'pointer',
           background: 'linear-gradient(135deg, #1677ff 0%, #0958d9 100%)',
-          boxShadow: '0 4px 20px rgba(22,119,255,0.5)',
+          boxShadow: '0 4px 20px rgba(22,119,255,0.4)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 26, color: '#fff',
+          fontSize: 22, color: '#fff',
           transition: 'transform 0.2s, box-shadow 0.2s',
         }}
         onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}
@@ -284,9 +321,9 @@ export default function ChatBot() {
         {open ? '✕' : '💬'}
         {!open && totalUnread > 0 && (
           <span style={{
-            position: 'absolute', top: 2, right: 2,
+            position: 'absolute', top: 0, right: 0,
             background: '#ff4d4f', color: '#fff', borderRadius: '50%',
-            width: 20, height: 20, fontSize: 11, fontWeight: 700,
+            width: 18, height: 18, fontSize: 10, fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: '2px solid #fff',
           }}>{totalUnread}</span>
@@ -295,9 +332,11 @@ export default function ChatBot() {
 
       {/* Chat Window */}
       {open && (
-        <div style={{
-          position: 'fixed', bottom: 100, right: 28, zIndex: 9998,
-          width: 375, height: 580, borderRadius: 20,
+        <div 
+          ref={containerRef}
+          style={{
+            position: 'fixed', bottom: 85, right: 20, zIndex: 9998,
+            width: 340, height: 520, borderRadius: 16,
           boxShadow: '0 12px 48px rgba(0,0,0,0.18)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           background: '#fff', border: '1px solid #e8e8e8',

@@ -1,8 +1,11 @@
 @import "tailwindcss";
+html { scroll-behavior: smooth; }
 
 :root {
   --background: #f8fafc;
-  --foreground: #1e293b;
+  --foreground: #0f172a;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
 }
 
 @theme inline {
@@ -15,155 +18,106 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0f172a;
-    --foreground: #f1f5f9;
+    --foreground: #f8fafc;
   }
 }
 
 body {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 16px;
-  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom styles for homepage */
-.hero {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%);
-  color: #1e293b;
-  padding: 80px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 500px;
-  border-radius: 0 0 50px 50px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+/* Ant Design Overrides for elegance */
+.ant-btn-primary {
+  background: #2563eb !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.15) !important;
+  height: auto !important;
+  padding: 8px 20px !important;
+  font-size: 14px !important;
 }
 
-.hero-text {
-  flex: 1;
-  max-width: 500px;
+.ant-input {
+  border-radius: 10px !important;
+  padding: 8px 14px !important;
+  font-size: 14px !important;
 }
 
-.hero-text h2 {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
+.ant-select-selector {
+  border-radius: 10px !important;
+  font-size: 14px !important;
 }
 
-.hero-text p {
-  font-size: 1.2rem;
-  margin-bottom: 2rem;
+.ant-card {
+  border-radius: 20px !important;
+  border: 1px solid #f1f5f9 !important;
 }
 
-.hero-stats {
-  display: flex;
-  gap: 40px;
-  margin-top: 30px;
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.hero-card {
-  flex: 1;
-  max-width: 400px;
-  margin-left: 40px;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.delay-200 {
+  animation-delay: 0.15s;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.font-script {
+  font-family: var(--font-dancing-script), cursive !important;
 }
 
 .section {
-  padding: 80px 20px;
+  padding: 60px 0;
   max-width: 1200px;
   margin: 0 auto;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 20px;
-  margin-bottom: 40px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-}
-
-.section h3 {
-  font-size: 2rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: #1e293b;
-}
-
-.section p {
-  font-size: 1.1rem;
-  color: #64748b;
-}
-
-.cta-banner {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  padding: 60px 20px;
-  text-align: center;
-  border-radius: 20px 20px 0 0;
-  margin-top: 40px;
-}
-
-.cta-text h3 {
-  font-size: 2rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: #92400e;
-}
-
-.cta-text p {
-  font-size: 1.1rem;
-  color: #a16207;
-}
-
-.highlight-card {
-  text-align: center;
-  height: 100%;
-  border: none;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 15px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
-}
-
-.highlight-card:hover {
-  transform: translateY(-5px);
-}
-
-/* Responsive adjustments */
-@media (max-width: 1024px) {
-  .hero {
-    flex-direction: column;
-    padding: 40px 16px;
-    min-height: auto;
-    border-radius: 0 0 30px 30px;
-  }
-
-  .hero-text h2 {
-    font-size: 2rem;
-  }
-
-  .hero-stats {
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .hero-card {
-    margin-left: 0;
-    margin-top: 30px;
-  }
-
-  .section {
-    padding: 40px 16px;
-    margin-bottom: 24px;
-    border-radius: 12px;
-  }
-
-  .section h3 {
-    font-size: 1.5rem;
-  }
-
-  .cta-banner {
-    padding: 40px 16px;
-    margin-top: 24px;
-    border-radius: 12px 12px 0 0;
-  }
-
-  .cta-text h3 {
-    font-size: 1.5rem;
-  }
 }
