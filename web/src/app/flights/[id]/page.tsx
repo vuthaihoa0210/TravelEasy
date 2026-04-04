@@ -101,7 +101,7 @@ export default function FlightDetailPage() {
     }
 
     return (
-        <div className="section">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-36 pb-20">
             <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()} style={{ marginBottom: 20 }}>
                 Quay lại danh sách
             </Button>

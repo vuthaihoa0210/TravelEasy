@@ -30,6 +30,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Ép buộc hiển thị con trỏ chuột pointer cho mọi phần tử tương tác */
+a, 
+button, 
+[role="button"], 
+input[type="button"], 
+input[type="submit"], 
+input[type="reset"],
+[href] {
+  cursor: pointer !important;
+}
+
 /* Ant Design Overrides for elegance */
 .ant-btn-primary {
   background: #2563eb !important;

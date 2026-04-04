@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
 import { 
   StyleSheet, 
   Text, 
@@ -10,9 +11,13 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
-  StatusBar
+  StatusBar,
+  KeyboardAvoidingView,
+  Platform,
+  RefreshControl,
+  BackHandler
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -32,19 +37,59 @@ export default function App() {
   const [userData, setUserData] = useState(null);
   const [activeImage, setActiveImage] = useState(0);
   const [userBookings, setUserBookings] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
   const [bookingForm, setBookingForm] = useState({
     customerName: '',
     customerPhone: '',
     totalPeople: 1,
+    doubleRooms: 0,
     seatClass: 'ECONOMY',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
   });
+  
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+  const [itemReviews, setItemReviews] = useState([]);
+  const [replyTarget, setReplyTarget] = useState(null);
+  const [replyContent, setReplyContent] = useState('');
+  const [reviewedBookings, setReviewedBookings] = useState({});
 
   // Chat States
   const [chatRoom, setChatRoom] = useState(null);
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
+  const socketRef = useRef(null);
+
+  useEffect(() => {
+    if (screen === 'Chat' && chatRoom) {
+      const socket = io(BACKEND_URL, { transports: ['websocket'] });
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        socket.emit('join_room', chatRoom.id);
+      });
+
+      socket.on('receive_message', (msg) => {
+        // Prevent duplicate appending locally if we optimize, but for now we rely entirely on the server broadcast
+        setMessages(prev => {
+          // ensure no duplicate by ID
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      });
+
+      socket.on('room_closed', ({ roomId }) => {
+        if (roomId === chatRoom.id) {
+           Alert.alert('Thông báo', 'Hội thoại đã được đóng bởi nhân viên hỗ trợ.');
+        }
+      });
+
+      return () => {
+        socket.disconnect();
+      };
+    }
+  }, [screen, chatRoom]);
   
   // Data States
   const [tours, setTours] = useState([]);
@@ -61,6 +106,32 @@ export default function App() {
   // Login States
   const [loginData, setLoginData] = useState({ email: '', password: '' });
 
+  // Handle Android Back Button
+  useEffect(() => {
+    const backAction = () => {
+      if (screen === 'Home' || screen === 'Welcome') return false; // Let default system back be invoked
+      
+      const parents = {
+        'Tours': 'Home', 'Hotels': 'Home', 'Flights': 'Home', 'Profile': 'Home', 'Chat': 'Home', 'Blogs': 'Home',
+        'TourDetail': 'Tours', 'HotelDetail': 'Hotels', 'FlightDetail': 'Flights',
+        'BookingDetail': 'Profile',
+        'Register': 'Welcome', 'Login': 'Welcome',
+        'Booking': 'Home' // fallback
+      };
+
+      if (parents[screen]) {
+        setScreen(parents[screen]);
+        return true; // Stop default back
+      }
+
+      setScreen('Home');
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [screen]);
+
   // Fetch Data on Load
   useEffect(() => {
     if (screen === 'Home' || screen === 'Tours' || screen === 'Hotels' || screen === 'Flights') {
@@ -70,6 +141,16 @@ export default function App() {
       fetchUserBookings();
     }
   }, [screen, isLoggedIn]);
+
+  useEffect(() => {
+    if ((screen === 'TourDetail' || screen === 'HotelDetail' || screen === 'FlightDetail') && selectedItem) {
+      const type = screen === 'TourDetail' ? 'TOUR' : (screen === 'HotelDetail' ? 'HOTEL' : 'FLIGHT');
+      fetch(`${BACKEND_URL}/api/reviews/${type}/${selectedItem.id}`)
+         .then(res => res.json())
+         .then(data => setItemReviews(Array.isArray(data) ? data : []))
+         .catch(e => setItemReviews([]));
+    }
+  }, [screen, selectedItem]);
 
   const fetchUserBookings = async () => {
     if (!userData?.id) return;
@@ -107,6 +188,13 @@ export default function App() {
     } catch (error) {
       console.log('Error fetching data:', error);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    if (isLoggedIn) await fetchUserBookings();
+    setRefreshing(false);
   };
 
   const getImageUrl = (path) => {
@@ -263,24 +351,14 @@ export default function App() {
   };
 
   const sendMessage = () => {
-    if (!chatInput.trim()) return;
-    const newMsg = {
-      id: Date.now(),
-      content: chatInput,
+    if (!chatInput.trim() || !chatRoom || !socketRef.current) return;
+    socketRef.current.emit('send_message', {
+      roomId: chatRoom.id,
+      senderId: userData.id,
       senderRole: 'USER',
-      createdAt: new Date().toISOString()
-    };
-    setMessages([...messages, newMsg]);
+      content: chatInput.trim(),
+    });
     setChatInput('');
-    // Giả lập Admin phản hồi
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        id: Date.now() + 1,
-        content: "Chào bạn! TravelEasy đã nhận được yêu cầu. Nhân viên hỗ trợ sẽ phản hồi bạn sớm nhất nhé!",
-        senderRole: 'ADMIN',
-        createdAt: new Date().toISOString()
-      }]);
-    }, 2000);
   };
 
   const renderWelcome = () => (
@@ -297,7 +375,7 @@ export default function App() {
       
       <View style={styles.welcomeContent}>
         <View style={styles.logoCircle}>
-          <Ionicons name="airplane" size={50} color="#1677ff" />
+          <Ionicons name="airplane" size={50} color="#2563eb" />
         </View>
         <Text style={styles.welcomeTitle}>TravelEasy</Text>
         <Text style={styles.welcomeSubtitle}>Hành trình vạn dặm, bắt đầu từ một cái chạm.</Text>
@@ -325,7 +403,7 @@ export default function App() {
     <SafeAreaView style={styles.mainContainer}>
       <View style={styles.chatHeader}>
         <TouchableOpacity onPress={() => setScreen('Home')} style={styles.chatBack}>
-          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+          <Ionicons name="arrow-back" size={24} color="#0f172a" />
         </TouchableOpacity>
         <View style={styles.chatTargetInfo}>
           <Text style={styles.chatTargetName}>Hỗ trợ trực tuyến</Text>
@@ -359,7 +437,7 @@ export default function App() {
       </ScrollView>
 
       <View style={styles.chatInputRow}>
-        <TouchableOpacity style={styles.chatAttachBtn}><Ionicons name="add-circle-outline" size={26} color="#1677ff" /></TouchableOpacity>
+        <TouchableOpacity style={styles.chatAttachBtn}><Ionicons name="add-circle-outline" size={26} color="#2563eb" /></TouchableOpacity>
         <TextInput 
           style={styles.chatInputBox}
           placeholder="Nhập tin nhắn..."
@@ -368,7 +446,7 @@ export default function App() {
           multiline
         />
         <TouchableOpacity style={styles.chatSendBtn} onPress={sendMessage}>
-          <Ionicons name="send" size={22} color={chatInput.trim() ? "#1677ff" : "#ccc"} />
+          <Ionicons name="send" size={22} color={chatInput.trim() ? "#2563eb" : "#ccc"} />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -402,7 +480,7 @@ export default function App() {
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Họ và Tên</Text>
               <View style={styles.inputBox}>
-                <Ionicons name="person-outline" size={20} color="#1677ff" />
+                <Ionicons name="person-outline" size={20} color="#2563eb" />
                 <TextInput 
                   style={styles.input} 
                   placeholder="Nhập tên của bạn" 
@@ -415,7 +493,7 @@ export default function App() {
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Email</Text>
               <View style={styles.inputBox}>
-                <Ionicons name="mail-outline" size={20} color="#1677ff" />
+                <Ionicons name="mail-outline" size={20} color="#2563eb" />
                 <TextInput 
                   style={styles.input} 
                   placeholder="name@example.com" 
@@ -430,7 +508,7 @@ export default function App() {
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Mật khẩu</Text>
               <View style={styles.inputBox}>
-                <Ionicons name="lock-closed-outline" size={20} color="#1677ff" />
+                <Ionicons name="lock-closed-outline" size={20} color="#2563eb" />
                 <TextInput 
                   style={styles.input} 
                   placeholder="••••••••" 
@@ -452,7 +530,7 @@ export default function App() {
         ) : (
           <View style={styles.form}>
             <Text style={styles.otpMessage}>
-              Mã xác nhận đã gửi tới <Text style={{ color: '#1677ff', fontWeight: 'bold' }}>{regData.email}</Text>
+              Mã xác nhận đã gửi tới <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>{regData.email}</Text>
             </Text>
 
             {receivedOtp && (
@@ -474,7 +552,7 @@ export default function App() {
             </View>
 
             <TouchableOpacity 
-              style={[styles.authSubmitBtn, { backgroundColor: '#1677ff' }]} 
+              style={[styles.authSubmitBtn, { backgroundColor: '#2563eb' }]} 
               onPress={onRegister}
               disabled={loading}
             >
@@ -500,7 +578,7 @@ export default function App() {
           <View style={styles.inputWrapper}>
              <Text style={styles.inputLabel}>Email</Text>
              <View style={styles.inputBox}>
-                <Ionicons name="mail-outline" size={20} color="#1677ff" />
+                <Ionicons name="mail-outline" size={20} color="#2563eb" />
                 <TextInput 
                   style={styles.input} 
                   placeholder="Email của bạn" 
@@ -515,7 +593,7 @@ export default function App() {
           <View style={styles.inputWrapper}>
              <Text style={styles.inputLabel}>Mật khẩu</Text>
              <View style={styles.inputBox}>
-                <Ionicons name="lock-closed-outline" size={20} color="#1677ff" />
+                <Ionicons name="lock-closed-outline" size={20} color="#2563eb" />
                 <TextInput 
                   style={styles.input} 
                   placeholder="Mật khẩu của bạn" 
@@ -527,7 +605,7 @@ export default function App() {
           </View>
 
           <TouchableOpacity style={{ alignSelf: 'flex-end', marginBottom: 25 }}>
-            <Text style={{ color: '#1677ff', fontWeight: '600' }}>Quên mật khẩu?</Text>
+            <Text style={{ color: '#2563eb', fontWeight: '600' }}>Quên mật khẩu?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -541,7 +619,7 @@ export default function App() {
           <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 30 }}>
             <Text style={{ color: '#666' }}>Mới sử dụng TravelEasy? </Text>
             <TouchableOpacity onPress={() => setScreen('Register')}>
-              <Text style={{ color: '#1677ff', fontWeight: 'bold' }}>Tạo tài khoản</Text>
+              <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>Tạo tài khoản</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -570,7 +648,7 @@ export default function App() {
 
     const statusColor = {
       PENDING: '#faad14',
-      CONFIRMED: '#1677ff',
+      CONFIRMED: '#2563eb',
       PAID: '#52c41a',
       CANCELLED: '#f5222d',
       COMPLETED: '#13c2c2',
@@ -587,12 +665,15 @@ export default function App() {
         <View style={styles.screenHeader}>
           <Text style={styles.screenTitle}>Trang Cá Nhân</Text>
         </View>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
           <View style={{ alignItems: 'center', marginVertical: 30 }}>
-            <View style={[styles.logoCircle, { backgroundColor: '#1677ff', marginBottom: 15 }]}>
+            <View style={[styles.logoCircle, { backgroundColor: '#2563eb', marginBottom: 15 }]}>
               <Ionicons name="person" size={50} color="white" />
             </View>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1a1a1a' }}>{userData?.name || 'Người dùng'}</Text>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#0f172a' }}>{userData?.name || 'Người dùng'}</Text>
             <Text style={{ fontSize: 16, color: '#666' }}>{userData?.email || 'N/A'}</Text>
           </View>
 
@@ -605,10 +686,10 @@ export default function App() {
               </View>
             ) : (
               userBookings.map(b => (
-                <View key={b.id} style={styles.bookingCardShort}>
+                <TouchableOpacity key={b.id} style={styles.bookingCardShort} onPress={() => { setSelectedItem(b); setScreen('BookingDetail'); }}>
                   <View style={styles.bookingCardHeader}>
-                    <View style={[styles.typeBadge, { backgroundColor: '#1677ff10' }]}>
-                      <Text style={{ color: '#1677ff', fontSize: 10, fontWeight: 'bold' }}>{typeLabel[b.type] || b.type}</Text>
+                    <View style={[styles.typeBadge, { backgroundColor: '#2563eb10' }]}>
+                      <Text style={{ color: '#2563eb', fontSize: 10, fontWeight: 'bold' }}>{typeLabel[b.type] || b.type}</Text>
                     </View>
                     <Text style={{ color: statusColor[b.status] || '#999', fontSize: 12, fontWeight: 'bold' }}>{statusLabel[b.status] || b.status}</Text>
                   </View>
@@ -620,7 +701,7 @@ export default function App() {
                     </View>
                     <Text style={styles.bookingPrice}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(b.finalPrice || b.price)}</Text>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))
             )}
 
@@ -632,7 +713,7 @@ export default function App() {
             ].map((item, idx) => (
               <TouchableOpacity key={idx} style={styles.settingsItem}>
                 <View style={[styles.categoryIconCircle, { width: 40, height: 40, marginBottom: 0 }]}>
-                  <Ionicons name={item.icon} size={20} color="#1677ff" />
+                  <Ionicons name={item.icon} size={20} color="#2563eb" />
                 </View>
                 <View style={{ flex: 1, marginLeft: 15, justifyContent: 'center' }}>
                   <Text style={{ fontSize: 15, fontWeight: '600' }}>{item.label}</Text>
@@ -667,19 +748,16 @@ export default function App() {
 
     const calculatePrice = () => {
       let base = item.price || 0;
-      let multiplier = 1;
       if (isHotel) {
-        multiplier = bookingForm.seatClass === 'DOUBLE' ? 1.5 : 1;
         const start = new Date(bookingForm.startDate);
         const end = new Date(bookingForm.endDate);
         const diff = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
-        return base * bookingForm.totalPeople * multiplier * diff;
+        return (base * (bookingForm.totalPeople || 0) + (base * 1.5) * (bookingForm.doubleRooms || 0)) * diff;
       }
       if (isFlight) {
-        multiplier = bookingForm.seatClass === 'BUSINESS' ? 1.5 : 1;
-        return base * bookingForm.totalPeople * multiplier;
+        return base * (bookingForm.totalPeople || 0) + (base * 1.5) * (bookingForm.doubleRooms || 0);
       }
-      return base * bookingForm.totalPeople;
+      return base * (bookingForm.totalPeople || 1);
     };
 
     const total = calculatePrice();
@@ -692,6 +770,17 @@ export default function App() {
 
       setLoading(true);
       try {
+        let builtSeatClass = null;
+        let totalCount = bookingForm.totalPeople;
+
+        if (isHotel) {
+          builtSeatClass = `${bookingForm.totalPeople || 0} Đơn, ${bookingForm.doubleRooms || 0} Đôi`;
+          totalCount = (bookingForm.totalPeople || 0) + (bookingForm.doubleRooms || 0);
+        } else if (isFlight) {
+          builtSeatClass = `${bookingForm.totalPeople || 0} Phổ Thông, ${bookingForm.doubleRooms || 0} Thương Gia`;
+          totalCount = (bookingForm.totalPeople || 0) + (bookingForm.doubleRooms || 0);
+        }
+
         const body = {
           userId: userData.id,
           type: type.toUpperCase(),
@@ -702,8 +791,8 @@ export default function App() {
           price: total,
           customerName: bookingForm.customerName,
           customerPhone: bookingForm.customerPhone,
-          totalPeople: bookingForm.totalPeople,
-          seatClass: isHotel || isFlight ? bookingForm.seatClass : null,
+          totalPeople: totalCount || 1,
+          seatClass: builtSeatClass,
         };
 
         const res = await fetch(`${BACKEND_URL}/api/bookings`, {
@@ -735,13 +824,13 @@ export default function App() {
       <SafeAreaView style={styles.mainContainer}>
         <View style={styles.screenHeader}>
           <TouchableOpacity onPress={() => setScreen(type + 'Detail')} style={{ marginBottom: 10 }}>
-            <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+            <Ionicons name="arrow-back" size={24} color="#0f172a" />
           </TouchableOpacity>
           <Text style={styles.screenTitle}>Xác nhận đặt hàng</Text>
         </View>
         <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: 20 }]}>
           <View style={{ padding: 15, borderRadius: 15, backgroundColor: 'white', marginBottom: 20, elevation: 2 }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1677ff' }}>{item.name}</Text>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#2563eb' }}>{item.name}</Text>
             <Text style={{ color: '#666', fontSize: 13, marginTop: 5 }}>Đơn giá: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.price)}</Text>
           </View>
 
@@ -769,31 +858,23 @@ export default function App() {
 
             <View style={{ flexDirection: 'row', gap: 15 }}>
               <View style={[styles.inputWrapper, { flex: 1 }]}>
-                <Text style={styles.inputLabel}>{isHotel ? 'Số phòng' : 'Số khách'}</Text>
+                <Text style={styles.inputLabel}>{isHotel ? 'Số phòng ĐƠN' : (isFlight ? 'Hệ Phổ Thông' : 'Số khách')}</Text>
                 <TextInput 
                   style={styles.bookingInput} 
                   keyboardType="numeric"
                   value={String(bookingForm.totalPeople)}
-                  onChangeText={t => setBookingForm({...bookingForm, totalPeople: parseInt(t) || 1})}
+                  onChangeText={t => setBookingForm({...bookingForm, totalPeople: parseInt(t) || 0})}
                 />
               </View>
               {(isHotel || isFlight) && (
                 <View style={[styles.inputWrapper, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>{isHotel ? 'Loại phòng' : 'Hạng vé'}</Text>
-                  <View style={{ flexDirection: 'row', gap: 5 }}>
-                    <TouchableOpacity 
-                      style={[styles.smallToggle, bookingForm.seatClass === (isHotel ? 'SINGLE' : 'ECONOMY') && styles.smallToggleActive]}
-                      onPress={() => setBookingForm({...bookingForm, seatClass: isHotel ? 'SINGLE' : 'ECONOMY'})}
-                    >
-                      <Text style={[styles.smallToggleText, bookingForm.seatClass === (isHotel ? 'SINGLE' : 'ECONOMY') && styles.smallToggleTextActive]}>{isHotel ? 'Đơn' : 'Phổ thông'}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.smallToggle, bookingForm.seatClass === (isHotel ? 'DOUBLE' : 'BUSINESS') && styles.smallToggleActive]}
-                      onPress={() => setBookingForm({...bookingForm, seatClass: isHotel ? 'DOUBLE' : 'BUSINESS'})}
-                    >
-                      <Text style={[styles.smallToggleText, bookingForm.seatClass === (isHotel ? 'DOUBLE' : 'BUSINESS') && styles.smallToggleTextActive]}>{isHotel ? 'Đôi' : 'Thương gia'}</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <Text style={styles.inputLabel}>{isHotel ? 'Số phòng ĐÔI' : 'Hệ Thương Gia'}</Text>
+                  <TextInput 
+                    style={styles.bookingInput} 
+                    keyboardType="numeric"
+                    value={String(bookingForm.doubleRooms || 0)}
+                    onChangeText={t => setBookingForm({...bookingForm, doubleRooms: parseInt(t) || 0})}
+                  />
                 </View>
               )}
             </View>
@@ -842,7 +923,7 @@ export default function App() {
     <SafeAreaView style={styles.mainContainer}>
       <View style={styles.screenHeader}>
         <TouchableOpacity onPress={() => setScreen('Home')} style={{ marginBottom: 10, width: 40 }}>
-          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+          <Ionicons name="arrow-back" size={24} color="#0f172a" />
         </TouchableOpacity>
         <Text style={styles.screenTitle}>Cẩm Nang Du Lịch</Text>
       </View>
@@ -868,7 +949,7 @@ export default function App() {
     <SafeAreaView style={styles.mainContainer}>
       <StatusBar barStyle="dark-content" />
       {/* Header */}
-      <LinearGradient colors={['#1677ff', '#0958d9']} style={styles.homeHeader}>
+      <LinearGradient colors={['#2563eb', '#1d4ed8']} style={styles.homeHeader}>
         <View style={styles.homeHeaderContent}>
           <View>
             <Text style={styles.homeWelcome}>Chào mừng {userData ? userData.name : 'bạn'},</Text>
@@ -896,7 +977,11 @@ export default function App() {
         </View>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         {/* Categories */}
         <View style={styles.categoriesSection}>
           <Text style={styles.sectionHeading}>Dịch vụ</Text>
@@ -904,7 +989,7 @@ export default function App() {
             {[
               { id: 'Tours', icon: 'map-outline', label: 'Tours', color: '#52c41a' },
               { id: 'Hotels', icon: 'business-outline', label: 'Khách sạn', color: '#fa8c16' },
-              { id: 'Flights', icon: 'airplane-outline', label: 'Máy bay', color: '#1677ff' },
+              { id: 'Flights', icon: 'airplane-outline', label: 'Máy bay', color: '#2563eb' },
               { id: 'Chat', icon: 'chatbubbles-outline', label: 'Hỗ trợ', color: '#722ed1' },
             ].map(cat => (
               <TouchableOpacity key={cat.id} style={styles.categoryItem} onPress={() => cat.id === 'Chat' ? startChat() : setScreen(cat.id)}>
@@ -1012,7 +1097,10 @@ export default function App() {
       <View style={styles.screenHeader}>
         <Text style={styles.screenTitle}>Tours Du Lịch</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         {tours.map(tour => (
           <TouchableOpacity key={tour.id} style={styles.tourCardFull} onPress={() => { setSelectedItem(tour); setScreen('TourDetail'); }}>
             <Image source={{ uri: getImageUrl(tour.image) }} style={styles.tourImageFull} />
@@ -1033,7 +1121,10 @@ export default function App() {
       <View style={styles.screenHeader}>
         <Text style={styles.screenTitle}>Khách Sạn</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         {(searchQuery ? hotels.filter(h => h.name.toLowerCase().includes(searchQuery.toLowerCase())) : hotels).map(hotel => (
           <TouchableOpacity key={hotel.id} style={styles.verticalCard} onPress={() => { setSelectedItem(hotel); setScreen('HotelDetail'); }}>
             <Image source={{ uri: getImageUrl(hotel.image) }} style={styles.verticalCardImage} />
@@ -1150,6 +1241,84 @@ export default function App() {
                 ))}
               </>
             )}
+
+            <View style={[styles.detailDivider, { marginTop: 20 }]} />
+            <Text style={styles.detailSectionTitle}>Đánh giá ({itemReviews.length})</Text>
+            {itemReviews.length === 0 ? (
+              <Text style={{ color: '#999', fontStyle: 'italic', marginBottom: 20 }}>Chưa có đánh giá nào.</Text>
+            ) : (
+              itemReviews.map(r => (
+                <View key={r.id} style={{ marginBottom: 15, backgroundColor: '#f8fafc', padding: 15, borderRadius: 10 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                    <Text style={{ fontWeight: 'bold' }}>{r.user?.name || 'Khách hàng'}</Text>
+                    <View style={{ flexDirection: 'row' }}>
+                      {[1,2,3,4,5].map(star => (
+                        <Ionicons key={star} name={star <= r.rating ? "star" : "star-outline"} size={14} color="#fadb14" />
+                      ))}
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 12, color: '#999', marginBottom: 8 }}>{new Date(r.createdAt).toLocaleDateString('vi-VN')}</Text>
+                  <Text style={{ color: '#333' }}>{r.comment}</Text>
+                  
+                  <TouchableOpacity onPress={() => setReplyTarget(replyTarget === r.id ? null : r.id)} style={{ marginTop: 8 }}>
+                     <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 13 }}>Phản hồi</Text>
+                  </TouchableOpacity>
+
+                  {/* Render replies */}
+                  {(r.replies && r.replies.length > 0) && (
+                    <View style={{ marginTop: 10, paddingLeft: 15, borderLeftWidth: 2, borderLeftColor: '#ddd' }}>
+                       {r.replies.map(reply => (
+                         <View key={reply.id} style={{ marginBottom: 10 }}>
+                           <Text style={{ fontWeight: 'bold', fontSize: 13 }}>{reply.user?.name || 'Thành viên'}</Text>
+                           <Text style={{ fontSize: 13, color: '#444' }}>{reply.comment}</Text>
+                         </View>
+                       ))}
+                    </View>
+                  )}
+
+                  {/* Reply Input */}
+                  {replyTarget === r.id && (
+                     <View style={{ marginTop: 10, flexDirection: 'row' }}>
+                       <TextInput 
+                         style={[styles.bookingInput, { flex: 1, paddingVertical: 5, paddingHorizontal: 10, minHeight: 35 }]}
+                         placeholder="Nhập phản hồi..."
+                         value={replyContent}
+                         onChangeText={setReplyContent}
+                       />
+                       <TouchableOpacity 
+                         disabled={loading}
+                         onPress={async () => {
+                           if (!isLoggedIn) {
+                             Alert.alert('Thông báo', 'Bạn cần đăng nhập để phản hồi.');
+                             return;
+                           }
+                           if (!replyContent.trim()) return;
+                           setLoading(true);
+                           try {
+                             const typeIdStr = screen === 'TourDetail' ? 'TOUR' : (screen === 'HotelDetail' ? 'HOTEL' : 'FLIGHT');
+                             const res = await fetch(`${BACKEND_URL}/api/reviews`, {
+                               method: 'POST',
+                               headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify({ userId: userData.id, type: typeIdStr, itemId: item.id, comment: replyContent, parentId: r.id })
+                             });
+                             if (res.ok) {
+                               const newlyData = await res.json();
+                               setItemReviews(prev => prev.map(rv => rv.id === r.id ? {...rv, replies: [...(rv.replies || []), newlyData]} : rv));
+                               setReplyTarget(null);
+                               setReplyContent('');
+                             }
+                           } catch(e) {} finally { setLoading(false); }
+                         }}
+                         style={{ backgroundColor: '#2563eb', justifyContent: 'center', paddingHorizontal: 15, borderRadius: 8, marginLeft: 5 }}
+                       >
+                         {loading && replyTarget === r.id ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: 'bold' }}>Gửi</Text>}
+                       </TouchableOpacity>
+                     </View>
+                  )}
+                </View>
+              ))
+            )}
+            
           </View>
           <View style={{ height: 120 }} />
         </ScrollView>
@@ -1179,7 +1348,8 @@ export default function App() {
                   customerName: userData.name || '',
                   customerPhone: '',
                   totalPeople: 1,
-                  seatClass: type === 'Hotel' ? 'SINGLE' : 'ECONOMY',
+                  doubleRooms: 0,
+                  seatClass: 'ECONOMY',
                   startDate: new Date().toISOString().split('T')[0],
                   endDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
                 });
@@ -1205,7 +1375,7 @@ export default function App() {
             <View style={[styles.verticalCardInfo, { paddingLeft: 15 }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={styles.verticalCardName}>{flight.name}</Text>
-                <Text style={{ color: '#1677ff', fontWeight: 'bold' }}>{flight.code}</Text>
+                <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>{flight.code}</Text>
               </View>
               <Text style={styles.verticalCardLoc}>Địa danh: {flight.location || 'Nội địa'}</Text>
               <Text style={styles.verticalCardPrice}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(flight.price || 0)}</Text>
@@ -1235,13 +1405,206 @@ export default function App() {
           <Ionicons 
             name={tab.icon} 
             size={24} 
-            color={screen === tab.id ? '#1677ff' : '#999'} 
+            color={screen === tab.id ? '#2563eb' : '#999'} 
           />
-          <Text style={[styles.tabLabel, { color: screen === tab.id ? '#1677ff' : '#999' }]}>{tab.label}</Text>
+          <Text style={[styles.tabLabel, { color: screen === tab.id ? '#2563eb' : '#999' }]}>{tab.label}</Text>
         </TouchableOpacity>
       ))}
     </View>
   );
+
+  const renderBookingDetail = (b) => {
+    if (!b) return null;
+
+    const handlePayment = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/bookings/${b.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'PAID' })
+        });
+        if (res.ok) {
+          Alert.alert('Thành công', 'Thanh toán thành công qua cổng điện tử!');
+          fetchUserBookings(); 
+          setSelectedItem({...b, status: 'PAID'});
+        } else {
+          Alert.alert('Lỗi', 'Thanh toán không thành công');
+        }
+      } catch (e) {
+         Alert.alert('Lỗi', 'Kết nối máy chủ thất bại');
+      } finally {
+         setLoading(false);
+      }
+    };
+
+    const submitReview = async () => {
+      if (!reviewForm.comment.trim()) {
+         Alert.alert('Lỗi', 'Vui lòng nhập nội dung đánh giá!');
+         return;
+      }
+      setLoading(true);
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/reviews`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              userId: userData.id,
+              type: b.type,
+              itemId: b.itemId,
+              rating: reviewForm.rating,
+              comment: reviewForm.comment
+          })
+        });
+        if (res.ok) {
+          Alert.alert('Cảm ơn', 'Đánh giá của bạn đã được ghi nhận thành công!');
+          setShowReviewForm(false);
+          setReviewForm({ rating: 5, comment: '' });
+          setReviewedBookings(prev => ({...prev, [b.id]: true}));
+        } else {
+          const err = await res.json();
+          Alert.alert('Lỗi', err.details || 'Gửi đánh giá thất bại');
+        }
+      } catch (e) {
+          Alert.alert('Lỗi', 'Không thể kết nối đến máy chủ');
+      } finally {
+          setLoading(false);
+      }
+    };
+
+    return (
+      <SafeAreaView style={styles.mainContainer}>
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.screenHeader}>
+            <TouchableOpacity onPress={() => { setScreen('Profile'); setShowReviewForm(false); }} style={{ marginBottom: 10, width: 40 }}>
+              <Ionicons name="arrow-back" size={24} color="#0f172a" />
+            </TouchableOpacity>
+            <Text style={styles.screenTitle}>Chi tiết đơn hàng</Text>
+          </View>
+          <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: 20 }]}>
+          <View style={{ backgroundColor: 'white', borderRadius: 20, padding: 20, elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 5 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#2563eb', marginBottom: 15 }}>{b.itemName}</Text>
+            
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+              <Text style={{ color: '#666' }}>Mã đơn:</Text>
+              <Text style={{ fontWeight: 'bold' }}>#BK-{b.id}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+              <Text style={{ color: '#666' }}>Trạng thái:</Text>
+              <Text style={{ fontWeight: 'bold', color: b.status === 'PENDING' ? '#faad14' : (b.status === 'CANCELLED' ? '#f5222d' : '#52c41a') }}>
+                {b.status === 'PENDING' ? 'Chờ xác nhận' : (b.status === 'CONFIRMED' ? 'Đã xác nhận' : (b.status === 'PAID' ? 'Đã thanh toán' : (b.status === 'CANCELLED' ? 'Đã hủy' : b.status)))}
+              </Text>
+            </View>
+             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+              <Text style={{ color: '#666' }}>Người đặt:</Text>
+              <Text style={{ fontWeight: 'bold' }}>{b.customerName}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+              <Text style={{ color: '#666' }}>Số điện thoại:</Text>
+              <Text style={{ fontWeight: 'bold' }}>{b.customerPhone}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+              <Text style={{ color: '#666' }}>Bắt đầu:</Text>
+              <Text style={{ fontWeight: 'bold' }}>{new Date(b.startDate).toLocaleDateString('vi-VN')}</Text>
+            </View>
+            {b.endDate && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                <Text style={{ color: '#666' }}>Kết thúc:</Text>
+                <Text style={{ fontWeight: 'bold' }}>{new Date(b.endDate).toLocaleDateString('vi-VN')}</Text>
+              </View>
+            )}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+              <Text style={{ color: '#666' }}>{b.type === 'HOTEL' ? 'Tổng số lượng phòng' : 'Số lượng khách'}:</Text>
+              <Text style={{ fontWeight: 'bold' }}>{b.totalPeople}</Text>
+            </View>
+            {b.seatClass && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                <Text style={{ color: '#666' }}>Chi tiết (Loại vé/Phòng):</Text>
+                <Text style={{ fontWeight: 'bold', maxWidth: '60%', textAlign: 'right' }}>{b.seatClass}</Text>
+              </View>
+            )}
+            
+            <View style={[styles.detailDivider, { marginVertical: 15, height: 1, backgroundColor: '#eee' }]} />
+            
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 16, fontWeight: 'bold' }}>Tổng thanh toán:</Text>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#faad14' }}>
+                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(b.finalPrice || b.price)}
+              </Text>
+            </View>
+            
+            {b.status === 'CONFIRMED' && (
+              <TouchableOpacity 
+                style={[styles.authSubmitBtn, { marginTop: 20, backgroundColor: '#52c41a' }]}
+                onPress={handlePayment}
+                disabled={loading}
+              >
+                {loading ? <ActivityIndicator color="white" /> : <Text style={styles.authSubmitBtnText}>Tiến hành Thanh Toán</Text>}
+              </TouchableOpacity>
+            )}
+
+            {(b.status === 'PAID' || b.status === 'COMPLETED') && !showReviewForm && !reviewedBookings[b.id] && (
+              <TouchableOpacity 
+                style={[styles.authSubmitBtn, { marginTop: 20, backgroundColor: '#faad14' }]}
+                onPress={() => setShowReviewForm(true)}
+              >
+                <Text style={styles.authSubmitBtnText}>Đánh giá chất lượng dịch vụ</Text>
+              </TouchableOpacity>
+            )}
+
+            {(b.status === 'PAID' || b.status === 'COMPLETED') && reviewedBookings[b.id] && (
+              <TouchableOpacity 
+                style={[styles.authSubmitBtn, { marginTop: 20, backgroundColor: '#1677ff' }]}
+                onPress={() => {
+                   const list = b.type === 'TOUR' ? tours : (b.type === 'HOTEL' ? hotels : flights);
+                   const foundItem = list.find(x => x.id === b.itemId);
+                   if (foundItem) {
+                      setSelectedItem(foundItem);
+                      setScreen(b.type === 'TOUR' ? 'TourDetail' : (b.type === 'HOTEL' ? 'HotelDetail' : 'FlightDetail'));
+                   } else {
+                      Alert.alert('Lỗi', 'Không tìm thấy sản phẩm này trên hệ thống nữa');
+                   }
+                }}
+              >
+                <Text style={styles.authSubmitBtnText}>Đến xem đánh giá</Text>
+              </TouchableOpacity>
+            )}
+
+            {showReviewForm && (
+              <View style={{ marginTop: 20, backgroundColor: '#f8fafc', padding: 15, borderRadius: 15 }}>
+                <Text style={{ fontWeight: 'bold', marginBottom: 10 }}>Đánh giá của bạn:</Text>
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <TouchableOpacity key={star} onPress={() => setReviewForm({...reviewForm, rating: star})}>
+                      <Ionicons name={star <= reviewForm.rating ? "star" : "star-outline"} size={28} color="#fadb14" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput
+                  style={[styles.bookingInput, { height: 80, textAlignVertical: 'top' }]}
+                  placeholder="Nhập nhận xét của bạn..."
+                  multiline
+                  value={reviewForm.comment}
+                  onChangeText={t => setReviewForm({...reviewForm, comment: t})}
+                />
+                <TouchableOpacity 
+                  style={[styles.authSubmitBtn, { marginTop: 15, backgroundColor: '#2563eb' }]}
+                  onPress={submitReview}
+                  disabled={loading}
+                >
+                  {loading ? <ActivityIndicator color="white" /> : <Text style={styles.authSubmitBtnText}>Gửi Đánh Giá</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  };
 
   switch (screen) {
     case 'Welcome': return renderWelcome();
@@ -1259,6 +1622,7 @@ export default function App() {
       return renderBooking(selectedItem, itemType);
     case 'Chat': return renderChat();
     case 'Profile': return renderProfile();
+    case 'BookingDetail': return renderBookingDetail(selectedItem);
     case 'Blogs': return renderBlogs();
     default: return renderWelcome();
   }
@@ -1268,7 +1632,7 @@ const styles = StyleSheet.create({
   // New Premium Styles
   mainContainer: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f8fafc',
   },
   homeHeader: {
     paddingTop: 50,
@@ -1318,7 +1682,7 @@ const styles = StyleSheet.create({
   sectionHeading: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#0f172a',
     marginBottom: 15,
   },
   categoryIcons: {
@@ -1354,7 +1718,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   seeAll: {
-    color: '#1677ff',
+    color: '#2563eb',
     fontWeight: '600',
   },
   horizontalScroll: {
@@ -1382,7 +1746,7 @@ const styles = StyleSheet.create({
   horizontalCardName: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#0f172a',
     marginBottom: 4,
   },
   ratingRow: {
@@ -1398,7 +1762,7 @@ const styles = StyleSheet.create({
   horizontalCardPrice: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#1677ff',
+    color: '#2563eb',
   },
   verticalCard: {
     flexDirection: 'row',
@@ -1431,7 +1795,7 @@ const styles = StyleSheet.create({
   verticalCardName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#0f172a',
     flex: 1,
   },
   ratingBoxSmall: {
@@ -1460,10 +1824,10 @@ const styles = StyleSheet.create({
   verticalCardPrice: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1677ff',
+    color: '#2563eb',
   },
   bookIcon: {
-    backgroundColor: '#1677ff',
+    backgroundColor: '#2563eb',
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -1505,7 +1869,7 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#0f172a',
   },
   tourCardFull: {
     borderRadius: 24,
@@ -1576,13 +1940,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   welcomePrimaryBtn: {
-    backgroundColor: '#1677ff',
+    backgroundColor: '#2563eb',
     height: 60,
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
-    shadowColor: "#1677ff",
+    shadowColor: "#2563eb",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -1628,16 +1992,16 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
     fontSize: 16,
-    color: '#1a1a1a',
+    color: '#0f172a',
   },
   authSubmitBtn: {
-    backgroundColor: '#1677ff',
+    backgroundColor: '#2563eb',
     height: 60,
     borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: "#1677ff",
+    shadowColor: "#2563eb",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1656,7 +2020,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   otpBoxContainer: {
-    backgroundColor: '#e6f7ff',
+    backgroundColor: '#eff6ff',
     padding: 15,
     borderRadius: 12,
     alignItems: 'center',
@@ -1670,7 +2034,7 @@ const styles = StyleSheet.create({
   otpBoxValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1677ff',
+    color: '#2563eb',
     letterSpacing: 2,
   },
   otpInputRow: {
@@ -1680,11 +2044,11 @@ const styles = StyleSheet.create({
   otpBigInput: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#0f172a',
     letterSpacing: 10,
     textAlign: 'center',
     borderBottomWidth: 2,
-    borderBottomColor: '#1677ff',
+    borderBottomColor: '#2563eb',
     width: '80%',
     paddingBottom: 10,
   },
@@ -1719,7 +2083,7 @@ const styles = StyleSheet.create({
   detailName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#0f172a',
     marginBottom: 8,
   },
   detailLocBox: {
@@ -1754,7 +2118,7 @@ const styles = StyleSheet.create({
   detailSectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#0f172a',
     marginBottom: 12,
   },
   detailDesc: {
@@ -1785,14 +2149,14 @@ const styles = StyleSheet.create({
   footerPriceValue: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#1677ff',
+    color: '#2563eb',
   },
   footerBookBtn: {
-    backgroundColor: '#1677ff',
+    backgroundColor: '#2563eb',
     paddingHorizontal: 35,
     paddingVertical: 15,
     borderRadius: 15,
-    shadowColor: "#1677ff",
+    shadowColor: "#2563eb",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1825,7 +2189,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1677ff',
+    backgroundColor: '#2563eb',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
@@ -1842,19 +2206,19 @@ const styles = StyleSheet.create({
   itineraryTitle: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#0f172a',
     marginBottom: 10,
   },
   activityItem: {
     marginBottom: 12,
     paddingLeft: 10,
     borderLeftWidth: 2,
-    borderLeftColor: '#e6f7ff',
+    borderLeftColor: '#eff6ff',
   },
   activityTime: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1677ff',
+    color: '#2563eb',
     marginBottom: 2,
   },
   activityDesc: {
@@ -1901,7 +2265,7 @@ const styles = StyleSheet.create({
   chatTargetName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#0f172a',
   },
   onlineStatus: {
     flexDirection: 'row',
@@ -1950,7 +2314,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   msgBubbleUser: {
-    backgroundColor: '#1677ff',
+    backgroundColor: '#2563eb',
     borderBottomRightRadius: 5,
     borderTopRightRadius: 20,
   },
@@ -1967,7 +2331,7 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   msgTextAdmin: {
-    color: '#1a1a1a',
+    color: '#0f172a',
   },
   msgTime: {
     fontSize: 10,
@@ -1989,7 +2353,7 @@ const styles = StyleSheet.create({
   },
   chatInputBox: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f8fafc',
     borderRadius: 20,
     paddingHorizontal: 15,
     paddingVertical: 8,
@@ -2025,7 +2389,7 @@ const styles = StyleSheet.create({
   blogTitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#0f172a',
     marginBottom: 5,
   },
   blogAuthor: {
@@ -2079,7 +2443,7 @@ const styles = StyleSheet.create({
   bookingPrice: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#1677ff',
+    color: '#2563eb',
   },
   settingsItem: {
     flexDirection: 'row',
@@ -2093,7 +2457,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   bookingInput: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f8fafc',
     borderRadius: 12,
     paddingHorizontal: 15,
     height: 50,
@@ -2110,7 +2474,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   smallToggleActive: {
-    backgroundColor: '#1677ff',
+    backgroundColor: '#2563eb',
   },
   smallToggleText: {
     fontSize: 12,

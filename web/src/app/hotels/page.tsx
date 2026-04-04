@@ -168,7 +168,7 @@ function HotelsContent() {
                <button 
                 key={tab.key}
                 onClick={() => { setActiveTab(tab.key); setCurrentPage(1); }}
-                className={`pb-4 text-[10px] font-bold tracking-[0.2em] uppercase transition-all relative whitespace-nowrap ${
+                className={`cursor-pointer pb-4 text-[10px] font-bold tracking-[0.2em] uppercase transition-all relative whitespace-nowrap ${
                   activeTab === tab.key ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
                 }`}
                >

@@ -13,6 +13,7 @@ interface Review {
     user: {
         name: string;
     };
+    replies?: Review[];
 }
 
 interface ReviewSectionProps {
@@ -26,6 +27,8 @@ export default function ReviewSection({ type, itemId }: ReviewSectionProps) {
     const [comment, setComment] = useState('');
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [replyingTo, setReplyingTo] = useState<number | null>(null);
+    const [replyComment, setReplyComment] = useState('');
     const { data: session } = useSession();
 
     useEffect(() => {
@@ -78,6 +81,42 @@ export default function ReviewSection({ type, itemId }: ReviewSectionProps) {
             }
         } catch (error) {
             console.error('Submit review error:', error);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleReplySubmit = async (parentId: number) => {
+        if (!session?.user) {
+            alert('Vui lòng đăng nhập để gửi phản hồi!');
+            return;
+        }
+        if (!replyComment.trim()) return;
+
+        setSubmitting(true);
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/reviews`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: (session.user as any).id,
+                    type,
+                    itemId,
+                    comment: replyComment,
+                    parentId
+                })
+            });
+
+            if (res.ok) {
+                const newReply = await res.json();
+                setReviews(reviews.map(r => r.id === parentId ? { ...r, replies: [...(r.replies || []), newReply] } : r));
+                setReplyComment('');
+                setReplyingTo(null);
+            } else {
+                alert('Lỗi: Có lỗi xảy ra khi gửi phản hồi.');
+            }
+        } catch (error) {
+            console.error('Reply review error:', error);
         } finally {
             setSubmitting(false);
         }
@@ -152,6 +191,48 @@ export default function ReviewSection({ type, itemId }: ReviewSectionProps) {
                                 </div>
                             </div>
                             <p className="text-gray-600 mt-3 leading-relaxed">{review.comment}</p>
+                            
+                            <button 
+                                onClick={() => setReplyingTo(replyingTo === review.id ? null : review.id)} 
+                                className="text-blue-600 text-sm mt-3 font-semibold hover:underline"
+                            >
+                                Phản hồi
+                            </button>
+
+                            {/* Replies */}
+                            {review.replies && review.replies.length > 0 && (
+                                <div className="mt-4 pl-4 border-l-2 border-blue-100 space-y-4">
+                                    {review.replies.map(reply => (
+                                        <div key={reply.id} className="bg-gray-50 p-3 rounded-lg">
+                                            <div className="font-semibold text-gray-800 text-sm">
+                                                {reply.user?.name || 'Thành viên'} 
+                                                <span className="text-gray-400 font-normal ml-2">{new Date(reply.createdAt).toLocaleDateString('vi-VN')}</span>
+                                            </div>
+                                            <p className="text-gray-600 mt-1 text-sm">{reply.comment}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Reply Form */}
+                            {replyingTo === review.id && (
+                                <div className="mt-4 flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        value={replyComment}
+                                        onChange={e => setReplyComment(e.target.value)}
+                                        placeholder="Nhập phản hồi của bạn..."
+                                        className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-blue-500"
+                                    />
+                                    <button 
+                                        onClick={() => handleReplySubmit(review.id)}
+                                        disabled={submitting || !replyComment.trim()}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                        {submitting ? '...' : 'Gửi'}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     ))
                 ) : (

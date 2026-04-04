@@ -181,7 +181,7 @@ function FlightsContent() {
                <button 
                 key={tab.key}
                 onClick={() => { setActiveTab(tab.key); setCurrentPage(1); }}
-                className={`pb-4 text-[10px] font-bold tracking-widest uppercase transition-all relative ${
+                className={`cursor-pointer pb-4 text-[10px] font-bold tracking-widest uppercase transition-all relative ${
                   activeTab === tab.key ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
                 }`}
                >

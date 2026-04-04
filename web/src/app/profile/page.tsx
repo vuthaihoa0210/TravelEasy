@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   Card, Avatar, Typography, Button, Descriptions, Tag, Spin,
-  Tabs, Empty, Row, Col, Statistic, Badge,
+  Tabs, Empty, Row, Col, Statistic, Badge, Modal
 } from 'antd';
 import {
   UserOutlined, MailOutlined, CrownOutlined, CalendarOutlined,
@@ -25,6 +25,12 @@ interface Booking {
   finalPrice: number;
   discountAmount: number;
   createdAt: string;
+  customerName?: string;
+  customerPhone?: string;
+  totalPeople?: number;
+  seatClass?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 
@@ -58,6 +64,13 @@ export default function ProfilePage() {
   const router = useRouter();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
+  const handleBookingClick = (b: Booking) => {
+    setSelectedBooking(b);
+    setIsModalVisible(true);
+  };
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -91,21 +104,27 @@ export default function ProfilePage() {
   const tabItems = [
     {
       key: 'bookings',
-      label: <span><ShoppingOutlined /> Đặt chỗ {bookings.length > 0 ? `(${bookings.length})` : ''}</span>,
+      label: <span><ShoppingOutlined /> Lịch sử đặt đơn {bookings.length > 0 ? `(${bookings.length})` : ''}</span>,
       children: bookings.length === 0 ? (
-        <Empty description="Bạn chưa có đặt chỗ nào" image={Empty.PRESENTED_IMAGE_SIMPLE}>
+        <Empty description="Bạn chưa có đặt đơn nào" image={Empty.PRESENTED_IMAGE_SIMPLE}>
           <Link href="/hotels"><Button type="primary">Đặt ngay</Button></Link>
         </Empty>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {bookings.map(b => (
-            <Card key={b.id} size="small" style={{ borderRadius: 12 }}>
+            <Card 
+              key={b.id} 
+              size="small" 
+              style={{ borderRadius: 12 }} 
+              hoverable 
+              onClick={() => handleBookingClick(b)}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontSize: 28 }}>{typeIcon[b.type] || '📦'}</span>
                   <div>
                     <Text strong style={{ fontSize: 14 }}>
-                      {b.itemName || `Đơn #${b.id.slice(-8).toUpperCase()}`}
+                      {b.itemName || `Đơn #${String(b.id).slice(-8).toUpperCase()}`}
                     </Text>
                     <div style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'center' }}>
                       <Tag color={statusColor[b.status] || 'default'}>{statusLabel[b.status] || b.status}</Tag>
@@ -132,7 +151,7 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div style={{ maxWidth: 900, margin: '40px auto', padding: '0 24px' }}>
+    <div style={{ maxWidth: 900, margin: '120px auto 40px', padding: '0 24px' }}>
       {/* Profile header card */}
       <Card
         style={{
@@ -218,6 +237,66 @@ export default function ProfilePage() {
       <Card style={{ borderRadius: 16 }}>
         <Tabs key={bookings.length} items={tabItems} size="large" />
       </Card>
+
+      <Modal
+        title={<span><ShoppingOutlined /> Chi tiết đơn hàng</span>}
+        open={isModalVisible}
+        onCancel={() => setIsModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setIsModalVisible(false)} type="primary">
+            Đóng
+          </Button>,
+        ]}
+        width={600}
+        centered
+      >
+        {selectedBooking && (
+          <Descriptions column={1} bordered size="small" style={{ marginTop: 16 }}>
+            <Descriptions.Item label="Mã đơn hàng">
+              <Text strong copyable>#{String(selectedBooking.id).slice(-8).toUpperCase()}</Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="Dịch vụ">
+              <span style={{ fontSize: 16, marginRight: 8 }}>{typeIcon[selectedBooking.type]}</span>
+              <Text strong>{selectedBooking.itemName}</Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">
+              <Tag color={statusColor[selectedBooking.status] || 'default'}>
+                {statusLabel[selectedBooking.status] || selectedBooking.status}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Ngày tạo đơn">
+              {new Date(selectedBooking.createdAt).toLocaleString('vi-VN')}
+            </Descriptions.Item>
+            <Descriptions.Item label="Họ tên người đặt">
+              {selectedBooking.customerName || (session?.user as any)?.name}
+            </Descriptions.Item>
+            <Descriptions.Item label="Số điện thoại">
+              {selectedBooking.customerPhone || 'Chưa cập nhật'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Ngày bắt đầu">
+              {selectedBooking.startDate ? new Date(selectedBooking.startDate).toLocaleDateString('vi-VN') : 'N/A'}
+            </Descriptions.Item>
+            {selectedBooking.endDate && (
+              <Descriptions.Item label="Ngày kết thúc">
+                {new Date(selectedBooking.endDate).toLocaleDateString('vi-VN')}
+              </Descriptions.Item>
+            )}
+            <Descriptions.Item label={selectedBooking.type === 'HOTEL' ? 'Số phòng' : 'Số người'}>
+              {selectedBooking.totalPeople || 1}
+            </Descriptions.Item>
+            {selectedBooking.seatClass && (
+              <Descriptions.Item label={selectedBooking.type === 'HOTEL' ? 'Loại phòng' : 'Hạng ghế'}>
+                {selectedBooking.seatClass}
+              </Descriptions.Item>
+            )}
+            <Descriptions.Item label="Tổng thanh toán">
+              <Text strong style={{ color: '#1677ff', fontSize: 16 }}>
+                {formatCurrency(selectedBooking.finalPrice || selectedBooking.price || 0)}
+              </Text>
+            </Descriptions.Item>
+          </Descriptions>
+        )}
+      </Modal>
     </div>
   );
 }

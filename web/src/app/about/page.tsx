@@ -16,11 +16,11 @@ export default function AboutPage() {
         />
         <div className="absolute inset-0 bg-slate-900/40" />
         
-        <div className="relative z-10 text-center px-6 max-w-4xl animate-fade-in-up">
-           <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight mb-6 uppercase tracking-[0.2em]">
-             Hành trình <span className="text-amber-400 italic font-script lowercase">là</span> Sự sống
+        <div className="relative z-10 text-center px-4 max-w-4xl animate-fade-in-up mt-16 md:mt-0 pt-20 pb-10">
+           <h1 className="text-3xl sm:text-4xl md:text-6xl font-black text-white mb-6 uppercase tracking-widest md:tracking-[0.2em] leading-snug">
+             Hành trình <span className="text-amber-400 italic font-script lowercase tracking-normal">là</span> Sự sống
            </h1>
-           <p className="text-lg md:text-xl text-white/90 font-light leading-relaxed max-w-2xl mx-auto">
+           <p className="text-sm sm:text-base md:text-xl text-white/90 font-light leading-relaxed max-w-2xl mx-auto">
              Khám phá câu chuyện đằng sau nỗ lực kiến tạo những trải nghiệm du lịch tinh tế từ TravelEasy.
            </p>
         </div>

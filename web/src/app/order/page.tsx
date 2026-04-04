@@ -315,7 +315,7 @@ function OrderContent() {
     };
 
     return (
-        <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 20px' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto', paddingTop: '120px', paddingBottom: '40px', paddingLeft: '20px', paddingRight: '20px' }}>
             <Card title={<Title level={3}>Xác nhận đặt hàng</Title>}>
                 <Row gutter={[24, 24]}>
                     <Col xs={24} md={12}>

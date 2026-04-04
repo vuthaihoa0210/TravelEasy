@@ -74,6 +74,18 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (!loading && typeof window !== 'undefined' && window.location.hash) {
+      setTimeout(() => {
+        const id = window.location.hash.replace('#', '');
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100); // 100ms delay to ensure elements are painted
+    }
+  }, [loading]);
+
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen bg-slate-50"><Spin size="large" /></div>;
   }
@@ -112,13 +124,13 @@ export default function HomePage() {
         {/* Navigation Arrows */}
         <button 
           onClick={() => setCurrentSlide(prev => (prev - 1 + slides.length) % slides.length)}
-          className="absolute left-8 top-1/2 -translate-y-1/2 z-30 w-16 h-16 rounded-full border border-white/20 flex items-center justify-center text-white hover:bg-white/10 hover:border-white transition-all group"
+          className="cursor-pointer absolute left-8 top-1/2 -translate-y-1/2 z-30 w-16 h-16 rounded-full border border-white/20 flex items-center justify-center text-white hover:bg-white/10 hover:border-white transition-all group"
         >
           <ChevronRight className="w-8 h-8 rotate-180 group-hover:-translate-x-1 transition-transform" />
         </button>
         <button 
           onClick={() => setCurrentSlide(prev => (prev + 1) % slides.length)}
-          className="absolute right-8 top-1/2 -translate-y-1/2 z-30 w-16 h-16 rounded-full border border-white/20 flex items-center justify-center text-white hover:bg-white/10 hover:border-white transition-all group"
+          className="cursor-pointer absolute right-8 top-1/2 -translate-y-1/2 z-30 w-16 h-16 rounded-full border border-white/20 flex items-center justify-center text-white hover:bg-white/10 hover:border-white transition-all group"
         >
           <ChevronRight className="w-8 h-8 group-hover:translate-x-1 transition-transform" />
         </button>
@@ -129,7 +141,7 @@ export default function HomePage() {
             <button 
               key={idx}
               onClick={() => setCurrentSlide(idx)}
-              className={`h-1 rounded-full transition-all duration-500 ${
+              className={`cursor-pointer h-1 rounded-full transition-all duration-500 ${
                 idx === currentSlide ? 'w-10 bg-amber-500' : 'w-4 bg-white/30 hover:bg-white/50'
               }`}
             />
@@ -166,7 +178,7 @@ export default function HomePage() {
             </div>
             <button 
               onClick={() => router.push(`/hotels?search=${encodeURIComponent(searchDest)}`)}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2"
+              className="cursor-pointer px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2"
             >
               <SearchOutlined /> Tìm ngay
             </button>
@@ -333,25 +345,32 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── FINAL CTA ── */}
-      <section className="py-12 px-4">
-        <div className="max-w-4xl mx-auto bg-blue-600 rounded-[2rem] p-10 md:p-14 text-center space-y-6 relative overflow-hidden shadow-2xl shadow-blue-500/20">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
+      {/* ── FINAL CTA (LUXURY) ── */}
+      <section className="relative z-20 px-4 pb-0 -mb-[160px] pt-12">
+        <div className="max-w-5xl mx-auto rounded-[2.5rem] p-10 md:p-16 text-center space-y-8 relative overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)] border border-slate-700 bg-slate-900 group">
+          {/* Background visuals */}
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1542314831-c6a4d14dbed6?w=1600&q=80')] bg-cover bg-center opacity-50 mix-blend-luminosity group-hover:scale-105 transition-transform duration-[2s]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 via-transparent to-blue-600/20" />
           
-          <h2 className="text-2xl md:text-4xl font-bold text-white tracking-tight relative z-10">Sẵn sàng khởi hành?</h2>
-          <p className="text-base text-white/80 font-light max-w-lg mx-auto relative z-10">Gia nhập cộng đồng TravelEasy và khám phá những hành trình tuyệt vời nhất.</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center relative z-10 pt-2">
+          <h2 className="text-5xl md:text-7xl font-script text-white tracking-tight relative z-10 drop-shadow-2xl">
+            Sẵn sàng khởi hành?
+          </h2>
+          <p className="text-[10px] md:text-xs text-slate-300 font-medium max-w-xl mx-auto relative z-10 uppercase tracking-[0.2em] leading-relaxed">
+            Gia nhập cộng đồng TravelEasy để tận hưởng kỳ nghỉ hạng sang, đặc quyền VIP và những hành trình đẳng cấp nhất.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-5 justify-center relative z-10 pt-6">
             <button 
               onClick={() => router.push('/auth/register')}
-              className="px-8 py-3 bg-white text-blue-600 rounded-full font-bold text-sm hover:shadow-lg transition-all"
+              className="cursor-pointer px-10 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 rounded-full font-black text-[12px] hover:scale-105 hover:shadow-[0_0_30px_rgba(245,158,11,0.5)] transition-all uppercase tracking-[0.15em]"
             >
-              Đăng ký ngay
+              Đăng ký thành viên
             </button>
             <button 
               onClick={() => router.push('/tours')}
-              className="px-8 py-3 bg-black/10 text-white rounded-full font-bold text-sm hover:bg-black/20 border border-white/20 transition-all"
+              className="cursor-pointer px-10 py-4 bg-white/5 text-white rounded-full font-bold text-[12px] hover:bg-white/10 border border-white/20 hover:border-amber-400 hover:text-amber-400 transition-all uppercase tracking-[0.15em] backdrop-blur-md"
             >
-              Xem tour du lịch
+              Xem tour nổi bật
             </button>
           </div>
         </div>

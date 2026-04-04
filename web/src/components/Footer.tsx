@@ -19,14 +19,14 @@ import {
 
 export default function Footer() {
   return (
-    <footer className="bg-slate-900 text-slate-400 pt-16 pb-8 mt-16 border-t border-slate-800">
+    <footer className="bg-slate-900 text-slate-400 pt-32 md:pt-40 pb-8 mt-16 border-t border-slate-800 relative z-0">
       <div className="container mx-auto px-6 max-w-7xl">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           {/* Brand */}
           <div className="space-y-6">
             <Link href="/" className="flex items-center gap-3 group">
               <div className="relative w-10 h-10 overflow-hidden rounded-xl bg-blue-600 p-2 shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
-                <Image src="/logo.png" alt="TravelEasy Logo" fill className="object-contain p-1" />
+                <Image src="/logo.png" priority sizes="40px" alt="TravelEasy Logo" fill className="object-contain p-1" />
               </div>
               <span className="text-2xl font-bold text-white tracking-tight">TravelEasy<span className="text-blue-500">.</span></span>
             </Link>

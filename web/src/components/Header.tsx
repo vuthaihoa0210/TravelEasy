@@ -82,13 +82,26 @@ export default function Header() {
             <div className="flex items-center justify-end border-r border-white/10">
               <div className="flex items-center h-10 border-l border-white/10">
                  {session ? (
-                    <div className="flex items-center h-full">
-                       <Link href="/profile" className="px-6 hover:text-white transition-colors h-full flex items-center border-r border-white/10 capitalize font-normal">
-                          Chào, {session.user?.name}
-                       </Link>
-                       <button onClick={() => signOut()} className="px-6 hover:text-white transition-colors h-full flex items-center border-r border-white/10">
-                          Đăng xuất
-                       </button>
+                    <div className="flex items-center h-full relative group">
+                       <div className="px-6 hover:text-white transition-colors h-full flex items-center border-r border-white/10 capitalize font-normal cursor-pointer gap-1">
+                          Chào, {session.user?.name} <ChevronDown className="w-3 h-3 text-amber-500 transition-transform group-hover:rotate-180" />
+                       </div>
+                       
+                       <div className="absolute top-[35px] right-0 pt-4 w-52 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
+                          <div className="bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl py-2 flex flex-col">
+                             <Link href="/profile" className="px-6 py-3 text-white/70 hover:text-white hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
+                                Trang cá nhân
+                             </Link>
+                             {(session?.user as any)?.role === 'ADMIN' && (
+                               <Link href="/admin/bookings" className="px-6 py-3 text-yellow-500/80 hover:text-yellow-400 hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
+                                  Trang Quản Trị
+                               </Link>
+                             )}
+                             <button onClick={() => signOut()} className="cursor-pointer px-6 py-3 text-left text-white/70 hover:text-red-400 hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
+                                Đăng xuất
+                             </button>
+                          </div>
+                       </div>
                     </div>
                  ) : (
                     <div className="flex items-center h-full">
@@ -96,7 +109,18 @@ export default function Header() {
                        <Link href="/auth/register" className="px-6 hover:text-white transition-colors h-full flex items-center border-r border-white/10">Đăng ký</Link>
                     </div>
                  )}
-                 <Link href="/#booking-guide" className="px-6 hover:text-white transition-colors h-full flex items-center border-r border-white/10 uppercase font-bold">Hướng dẫn</Link>
+                 <Link 
+                    href="/#booking-guide" 
+                    onClick={(e) => {
+                      if (pathname === '/') {
+                        e.preventDefault();
+                        document.getElementById('booking-guide')?.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    className="px-6 hover:text-white transition-colors h-full flex items-center border-r border-white/10 uppercase font-bold"
+                 >
+                    Hướng dẫn
+                 </Link>
               </div>
             </div>
           </div>
@@ -156,7 +180,7 @@ export default function Header() {
               <Link href="/blogs" className="hover:text-amber-500 transition-colors uppercase">Tin tức</Link>
               <button 
                 onClick={() => window.dispatchEvent(new Event('open_chatbot'))}
-                className="hover:text-amber-500 transition-colors uppercase font-bold"
+                className="cursor-pointer hover:text-amber-500 transition-colors uppercase font-bold"
               >
                 Liên hệ
               </button>
@@ -176,10 +200,13 @@ export default function Header() {
       </div>
 
       {/* Mobile Menu Overlay */}
-      <div className={`lg:hidden fixed inset-0 bg-slate-900/98 backdrop-blur-xl z-40 transition-all duration-500 ${
-        isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none overflow-hidden'
-      }`}>
-        <div className="flex flex-col items-center justify-center h-full space-y-8 text-white font-bold uppercase tracking-widest p-6 overflow-y-auto">
+      <div 
+        className={`lg:hidden fixed inset-0 z-50 transition-all duration-500 overflow-y-auto ${
+          isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        style={{ backgroundColor: 'rgba(15, 23, 42, 0.98)', backdropFilter: 'blur(20px)' }}
+      >
+        <div className="flex flex-col items-center justify-start min-h-screen pt-24 pb-12 space-y-8 text-white font-bold uppercase tracking-widest p-6">
            <Link href="/" onClick={()=>setIsMenuOpen(false)} className="text-xl hover:text-amber-500">Trang chủ</Link>
            <Link href="/about" onClick={()=>setIsMenuOpen(false)} className="text-xl hover:text-amber-500">Giới thiệu</Link>
            
@@ -197,14 +224,14 @@ export default function Header() {
            <Link href="/blogs" onClick={()=>setIsMenuOpen(false)} className="text-xl hover:text-amber-500">Tin tức</Link>
            <button 
              onClick={() => { setIsMenuOpen(false); window.dispatchEvent(new Event('open_chatbot')); }}
-             className="text-xl hover:text-amber-500 uppercase font-bold"
+             className="cursor-pointer text-xl hover:text-amber-500 uppercase font-bold"
            >
              Liên hệ
            </button>
            <Link href="/vouchers" onClick={()=>setIsMenuOpen(false)} className="text-xl hover:text-amber-500">Ưu đãi</Link>
            <div className="pt-6 flex flex-col items-center gap-4 w-full px-10">
               {session ? (
-                 <button onClick={() => signOut()} className="w-full text-sm border border-white/20 py-3 rounded-full">Đăng xuất</button>
+                 <button onClick={() => signOut()} className="cursor-pointer w-full text-sm border border-white/20 py-3 rounded-full">Đăng xuất</button>
               ) : (
                 <div className="flex flex-col gap-4 w-full">
                    <Link href="/auth/signin" onClick={()=>setIsMenuOpen(false)} className="w-full text-sm border border-white/20 py-3 rounded-full text-center">Đăng nhập</Link>

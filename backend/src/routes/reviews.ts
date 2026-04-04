@@ -12,12 +12,13 @@ router.get('/:type/:itemId', async (req: Request, res: Response) => {
             where: {
                 type: (type as string).toUpperCase(),
                 itemId: Number(itemId),
+                parentId: null,
             },
             include: {
-                user: {
-                    select: {
-                        name: true,
-                    },
+                user: { select: { name: true } },
+                replies: {
+                    include: { user: { select: { name: true } } },
+                    orderBy: { createdAt: 'asc' },
                 },
             },
             orderBy: {
@@ -34,18 +35,18 @@ router.get('/:type/:itemId', async (req: Request, res: Response) => {
 // Post a new review
 router.post('/', async (req: Request, res: Response) => {
     try {
-        const { userId, type, itemId, rating, comment } = req.body;
+        const { userId, type, itemId, rating, comment, parentId } = req.body;
 
-        if (!userId || !type || !itemId || !rating || !comment) {
+        if (!userId || !type || !itemId || !comment) {
             res.status(400).json({ error: 'Missing required fields' });
             return;
         }
 
         const uId = Number(userId);
         const iId = Number(itemId);
-        const rVal = Number(rating);
+        const rVal = Number(rating) || 5;
 
-        if (isNaN(uId) || isNaN(iId) || isNaN(rVal)) {
+        if (isNaN(uId) || isNaN(iId) || (rating && isNaN(rVal))) {
             res.status(400).json({ error: 'Invalid ID or rating format' });
             return;
         }
@@ -57,13 +58,11 @@ router.post('/', async (req: Request, res: Response) => {
                 itemId: iId,
                 rating: rVal,
                 comment,
+                parentId: parentId ? Number(parentId) : null,
             },
             include: {
-                user: {
-                    select: {
-                        name: true,
-                    },
-                },
+                user: { select: { name: true } },
+                replies: { include: { user: { select: { name: true } } } },
             },
         });
 
