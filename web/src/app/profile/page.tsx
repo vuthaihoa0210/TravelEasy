@@ -31,6 +31,7 @@ interface Booking {
   seatClass?: string;
   startDate?: string;
   endDate?: string;
+  subBookings?: Booking[];
 }
 
 
@@ -82,9 +83,45 @@ export default function ProfilePage() {
     if (status !== 'authenticated') return;
     const userId = (session?.user as any)?.id;
     if (!userId) return;
-    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}`}/api/bookings/user/${userId}`)
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/bookings/user/${userId}`)
       .then(r => r.json())
-      .then(b => { setBookings(Array.isArray(b) ? b : []); setLoading(false); })
+      .then(b => { 
+        const items = Array.isArray(b) ? b : [];
+        if (items.length > 0) {
+          items.sort((x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime());
+          const grouped: Booking[] = [];
+          items.forEach(booking => {
+            const last = grouped[grouped.length - 1];
+            const isSameOrder = last && 
+                last.type === booking.type && 
+                last.itemId === booking.itemId && 
+                Math.abs(new Date(last.createdAt).getTime() - new Date(booking.createdAt).getTime()) < 5000;
+                
+            if (isSameOrder) {
+              last.subBookings!.push(booking);
+              last.finalPrice = (last.finalPrice || 0) + (booking.finalPrice || booking.price || 0);
+              last.discountAmount = (last.discountAmount || 0) + (booking.discountAmount || 0);
+              last.price = (last.price || 0) + (booking.price || 0);
+              
+              if (last.type === 'FLIGHT') {
+                last.itemName = last.itemName?.replace(' (Chiều đi)', '')?.replace(' (Chiều về)', '') + ' (Khứ hồi)';
+              } else if (last.type === 'HOTEL') {
+                last.itemName = last.itemName?.includes('Nhiều phòng') ? last.itemName : `${last.itemName} (Nhiều phòng)`;
+              }
+            } else {
+              grouped.push({
+                ...booking,
+                finalPrice: booking.finalPrice || booking.price || 0,
+                subBookings: [booking]
+              });
+            }
+          });
+          setBookings(grouped);
+        } else {
+          setBookings([]);
+        }
+        setLoading(false); 
+      })
       .catch(() => setLoading(false));
   }, [status, session]);
 
@@ -251,50 +288,68 @@ export default function ProfilePage() {
         centered
       >
         {selectedBooking && (
-          <Descriptions column={1} bordered size="small" style={{ marginTop: 16 }}>
-            <Descriptions.Item label="Mã đơn hàng">
-              <Text strong copyable>#{String(selectedBooking.id).slice(-8).toUpperCase()}</Text>
-            </Descriptions.Item>
-            <Descriptions.Item label="Dịch vụ">
-              <span style={{ fontSize: 16, marginRight: 8 }}>{typeIcon[selectedBooking.type]}</span>
-              <Text strong>{selectedBooking.itemName}</Text>
-            </Descriptions.Item>
-            <Descriptions.Item label="Trạng thái">
-              <Tag color={statusColor[selectedBooking.status] || 'default'}>
-                {statusLabel[selectedBooking.status] || selectedBooking.status}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Ngày tạo đơn">
-              {new Date(selectedBooking.createdAt).toLocaleString('vi-VN')}
-            </Descriptions.Item>
-            <Descriptions.Item label="Họ tên người đặt">
-              {selectedBooking.customerName || (session?.user as any)?.name}
-            </Descriptions.Item>
-            <Descriptions.Item label="Số điện thoại">
-              {selectedBooking.customerPhone || 'Chưa cập nhật'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Ngày bắt đầu">
-              {selectedBooking.startDate ? new Date(selectedBooking.startDate).toLocaleDateString('vi-VN') : 'N/A'}
-            </Descriptions.Item>
-            {selectedBooking.endDate && (
-              <Descriptions.Item label="Ngày kết thúc">
-                {new Date(selectedBooking.endDate).toLocaleDateString('vi-VN')}
+          <>
+            <Descriptions column={1} bordered size="small" style={{ marginTop: 16 }}>
+              <Descriptions.Item label="Mã đơn hàng">
+                <Text strong copyable>#{String(selectedBooking.id).slice(-8).toUpperCase()}</Text>
               </Descriptions.Item>
-            )}
-            <Descriptions.Item label={selectedBooking.type === 'HOTEL' ? 'Số phòng' : 'Số người'}>
-              {selectedBooking.totalPeople || 1}
-            </Descriptions.Item>
-            {selectedBooking.seatClass && (
-              <Descriptions.Item label={selectedBooking.type === 'HOTEL' ? 'Loại phòng' : 'Hạng ghế'}>
-                {selectedBooking.seatClass}
+              <Descriptions.Item label="Dịch vụ">
+                <span style={{ fontSize: 16, marginRight: 8 }}>{typeIcon[selectedBooking.type]}</span>
+                <Text strong>{selectedBooking.itemName}</Text>
               </Descriptions.Item>
-            )}
-            <Descriptions.Item label="Tổng thanh toán">
-              <Text strong style={{ color: '#1677ff', fontSize: 16 }}>
-                {formatCurrency(selectedBooking.finalPrice || selectedBooking.price || 0)}
-              </Text>
-            </Descriptions.Item>
-          </Descriptions>
+              <Descriptions.Item label="Trạng thái">
+                <Tag color={statusColor[selectedBooking.status] || 'default'}>
+                  {statusLabel[selectedBooking.status] || selectedBooking.status}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Ngày tạo đơn">
+                {new Date(selectedBooking.createdAt).toLocaleString('vi-VN')}
+              </Descriptions.Item>
+              <Descriptions.Item label="Họ tên người đặt">
+                {selectedBooking.customerName || (session?.user as any)?.name}
+              </Descriptions.Item>
+              <Descriptions.Item label="Số điện thoại">
+                {selectedBooking.customerPhone || 'Chưa cập nhật'}
+              </Descriptions.Item>
+            </Descriptions>
+
+            {selectedBooking.subBookings && selectedBooking.subBookings.map((sub, index) => (
+               <Descriptions key={sub.id} column={1} bordered size="small" style={{ marginTop: 16 }} title={<Text strong style={{ fontSize: 14 }}>Chi tiết #{index + 1}: {sub.itemName}</Text>}>
+                <Descriptions.Item label="Ngày bắt đầu">
+                  {sub.startDate ? new Date(sub.startDate).toLocaleDateString('vi-VN') : 'N/A'}
+                </Descriptions.Item>
+                {sub.endDate && (
+                  <Descriptions.Item label="Ngày kết thúc">
+                    {new Date(sub.endDate).toLocaleDateString('vi-VN')}
+                  </Descriptions.Item>
+                )}
+                <Descriptions.Item label={sub.type === 'HOTEL' ? 'Số phòng' : 'Số người'}>
+                  {sub.totalPeople || 1}
+                </Descriptions.Item>
+                {sub.seatClass && (
+                  <Descriptions.Item label={sub.type === 'HOTEL' ? 'Loại phòng' : 'Hạng ghế'}>
+                    {sub.seatClass}
+                  </Descriptions.Item>
+                )}
+                <Descriptions.Item label="Giá dịch vụ">
+                  <Text strong>{formatCurrency(sub.price || 0)}</Text>
+                </Descriptions.Item>
+               </Descriptions>
+            ))}
+
+            <Descriptions column={1} bordered size="small" style={{ marginTop: 16 }}>
+              {selectedBooking.discountAmount > 0 && (
+                <Descriptions.Item label="Giảm giá">
+                  <Text type="success">-{formatCurrency(selectedBooking.discountAmount)}</Text>
+                </Descriptions.Item>
+              )}
+              <Descriptions.Item label="Tổng thanh toán">
+                <Text strong style={{ color: '#1677ff', fontSize: 16 }}>
+                  {formatCurrency(selectedBooking.finalPrice || selectedBooking.price || 0)}
+                </Text>
+              </Descriptions.Item>
+            </Descriptions>
+          </>
         )}
       </Modal>
     </div>

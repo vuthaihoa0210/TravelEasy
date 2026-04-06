@@ -139,6 +139,14 @@ export default function ChatBot() {
   const [liveUnread, setLiveUnread] = useState(0);
   const socketRef = useRef<Socket | null>(null);
 
+  const openRef = useRef(open);
+  const modeRef = useRef(mode);
+  useEffect(() => { openRef.current = open; }, [open]);
+  useEffect(() => { modeRef.current = mode; }, [mode]);
+
+  const liveStatusRef = useRef(liveStatus);
+  useEffect(() => { liveStatusRef.current = liveStatus; }, [liveStatus]);
+
   const aiBottomRef = useRef<HTMLDivElement>(null);
   const liveBottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -213,6 +221,11 @@ export default function ChatBot() {
       const socket = io(BACKEND, { transports: ['websocket', 'polling'] });
       socketRef.current = socket;
 
+      if (socket.connected) {
+        socket.emit('join_room', room.id);
+        setLiveStatus('connected');
+      }
+
       socket.on('connect', () => {
         socket.emit('join_room', room.id);
         setLiveStatus('connected');
@@ -220,7 +233,7 @@ export default function ChatBot() {
 
       socket.on('receive_message', (msg: LiveMessage) => {
         setLiveMessages(prev => [...prev, msg]);
-        if (!open || mode !== 'live') setLiveUnread(n => n + 1);
+        if (!openRef.current || modeRef.current !== 'live') setLiveUnread(n => n + 1);
       });
 
       socket.on('room_closed', ({ roomId: closedRoomId }: { roomId: number }) => {
@@ -231,25 +244,32 @@ export default function ChatBot() {
     } catch {
       setLiveStatus('idle');
     }
-  }, [session, open, mode]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
-  // Disconnect on unmount
+  // Handle open event
   useEffect(() => {
     const handleOpenChat = (e: any) => {
       setOpen(true);
       if (e.detail?.mode) {
         setMode(e.detail.mode);
-        if (e.detail.mode === 'live' && liveStatus === 'idle') {
+        if (e.detail.mode === 'live' && liveStatusRef.current === 'idle') {
           connectLive();
         }
       }
     };
     window.addEventListener('open_chatbot', handleOpenChat);
     return () => {
-      socketRef.current?.disconnect();
       window.removeEventListener('open_chatbot', handleOpenChat);
     };
-  }, [connectLive, liveStatus]);
+  }, [connectLive]);
+
+  // Disconnect on unmount
+  useEffect(() => {
+    return () => {
+      socketRef.current?.disconnect();
+    };
+  }, []);
 
   // Clear live unread when viewing live tab
   useEffect(() => {
