@@ -43,7 +43,7 @@ router.post('/', async (req: Request, res: Response) => {
                 price: Number(data.price),
                 image: data.image || '/images/default.jpg',
                 rating: Number(data.rating || 0),
-                category: data.category || 'DOMESTIC',
+                category: data.category || 'DOMESTIC',\n                duration: data.duration || '3N2Đ',
                 itinerary: data.itinerary
             }
         });
@@ -68,7 +68,7 @@ router.put('/:id', async (req: Request, res: Response) => {
                 price: Number(data.price),
                 image: data.image,
                 rating: Number(data.rating),
-                category: data.category,
+                category: data.category,\n                duration: data.duration,
                 itinerary: data.itinerary
             }
         });

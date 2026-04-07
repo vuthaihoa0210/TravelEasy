@@ -19,6 +19,8 @@ function OrderContent() {
 
     const [form] = Form.useForm();
     const [item, setItem] = useState<any>(null);
+    const [selectedHotel, setSelectedHotel] = useState<any>(null);
+    const [selectedFlight, setSelectedFlight] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [totalPrice, setTotalPrice] = useState(0);
     const [tripType, setTripType] = useState('ONE_WAY');
@@ -89,6 +91,9 @@ function OrderContent() {
             return;
         }
 
+        const hotelId = searchParams.get('hotelId');
+        const flightId = searchParams.get('flightId');
+
         let endpoint = '';
         if (type === 'TOUR') endpoint = `/api/tours/${id}`;
         else if (type === 'HOTEL') endpoint = `/api/hotels/${id}`;
@@ -98,8 +103,27 @@ function OrderContent() {
             .then(res => res.json())
             .then(data => {
                 setItem(data);
-                setLoading(false);
-                setTotalPrice(data.price || 0); // Initial price
+                
+                let initialPrice = data.price || 0;
+                const promises = [];
+                
+                if (type === 'TOUR' && hotelId) {
+                    promises.push(fetch(`/api/hotels/${hotelId}`).then(res => res.json()).then(h => {
+                        setSelectedHotel(h);
+                        initialPrice += h.price || 0;
+                    }));
+                }
+                if (type === 'TOUR' && flightId) {
+                    promises.push(fetch(`/api/flights/${flightId}`).then(res => res.json()).then(f => {
+                        setSelectedFlight(f);
+                        initialPrice += f.price || 0;
+                    }));
+                }
+                
+                Promise.all(promises).then(() => {
+                    setLoading(false);
+                    setTotalPrice(initialPrice); // Initial price
+                });
             })
             .catch(err => {
                 console.error(err);
@@ -174,9 +198,12 @@ function OrderContent() {
             }
 
         } else {
-            // Tour Logic: Global dates
+            // Tour Logic: Single date, return is +3 days
             let quantity = allValues.totalPeople || 1;
-            grandTotal = price * quantity;
+            let basePrice = item.price || 0;
+            if (selectedHotel) basePrice += selectedHotel.price || 0;
+            if (selectedFlight) basePrice += selectedFlight.price || 0;
+            grandTotal = basePrice * quantity;
         }
 
         setTotalPrice(grandTotal);
@@ -281,17 +308,25 @@ function OrderContent() {
                         }));
                     });
                 }
-            } else {
                 // Tour
+                const startDate = values.startDate;
+                
+                // Parse nights from duration
+                const nightsMatch = item?.duration?.match(/(\d+)Đ/);
+                const nights = nightsMatch ? parseInt(nightsMatch[1]) : 2;
+                const endDate = dayjs(startDate).add(nights, 'day'); 
+
                 promises.push(fetch('/api/bookings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         ...commonData,
-                        startDate: values.dates[0],
-                        endDate: values.dates[1],
+                        startDate: startDate,
+                        endDate: endDate,
                         price: totalPrice,
                         totalPeople: values.totalPeople,
+                        hotelId: selectedHotel ? selectedHotel.id : null,
+                        flightId: selectedFlight ? selectedFlight.id : null,
                     }),
                 }));
             }
@@ -322,6 +357,19 @@ function OrderContent() {
                         <Title level={4} style={{ color: '#1677ff' }}>{item?.name}</Title>
                         <Text strong>Loại dịch vụ:</Text> <Text>{type}</Text><br />
                         <Text strong>Đơn giá:</Text> <Text>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item?.price)}</Text>
+                        
+                        {selectedHotel && (
+                            <div style={{ marginTop: 8 }}>
+                                <Text strong>Khách sạn kèm theo:</Text> <Text>{selectedHotel.name}</Text><br />
+                                <Text strong>Thêm:</Text> <Text>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(selectedHotel.price)}/người</Text>
+                            </div>
+                        )}
+                        {selectedFlight && (
+                            <div style={{ marginTop: 8 }}>
+                                <Text strong>Vé bay kèm theo:</Text> <Text>{selectedFlight.name}</Text><br />
+                                <Text strong>Thêm:</Text> <Text>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(selectedFlight.price)}/người</Text>
+                            </div>
+                        )}
                         <Divider />
 
                         <div style={{ marginBottom: 16 }}>
@@ -577,8 +625,25 @@ function OrderContent() {
                             {/* --- TOUR FIELDS --- */}
                             {type === 'TOUR' && (
                                 <>
-                                    <Form.Item name="dates" label="Ngày đi / về" rules={[{ required: true, message: 'Vui lòng chọn ngày' }]}>
-                                        <DatePicker.RangePicker style={{ width: '100%' }} disabledDate={(current) => current && current < dayjs().endOf('day')} />
+                                    <Form.Item name="startDate" label="Ngày khởi hành" rules={[{ required: true, message: 'Vui lòng chọn ngày khởi hành' }]}>
+                                        <DatePicker 
+                                            style={{ width: '100%' }} 
+                                            disabledDate={(current) => current && current < dayjs().endOf('day')}
+                                            onChange={(date) => {
+                                                if (date && item?.duration) {
+                                                    const nightsMatch = item.duration.match(/(\d+)Đ/);
+                                                    const nights = nightsMatch ? parseInt(nightsMatch[1]) : 2;
+                                                    const returnDay = dayjs(date).add(nights, 'day');
+                                                    form.setFieldsValue({ returnDate: returnDay.format('DD/MM/YYYY') });
+                                                } else if (date) {
+                                                    const returnDay = dayjs(date).add(2, 'day');
+                                                    form.setFieldsValue({ returnDate: returnDay.format('DD/MM/YYYY') });
+                                                }
+                                            }}
+                                        />
+                                    </Form.Item>
+                                    <Form.Item name="returnDate" label="Ngày về (Dự kiến)">
+                                        <Input disabled style={{ backgroundColor: '#f5f5f5', color: '#000', fontWeight: 'bold' }} />
                                     </Form.Item>
                                     <Form.Item name="totalPeople" label="Số lượng khách" rules={[{ required: true }]}>
                                         <InputNumber min={1} style={{ width: '100%' }} />

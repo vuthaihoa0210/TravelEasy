@@ -8,58 +8,60 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        Int           @id @default(autoincrement())
+  email     String        @unique
   name      String?
   password  String?
-  role      String   @default("USER")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      String        @default("USER")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
   bookings  Booking[]
-  vouchers  UserVoucher[]
-  reviews   Review[]
   chatRooms ChatRoom[]
+  reviews   Review[]
+  vouchers  UserVoucher[]
 }
 
 model Voucher {
-  id            Int      @id @default(autoincrement())
-  code          String   @unique
-  type          String   // PERCENT or AMOUNT
+  id            Int           @id @default(autoincrement())
+  code          String        @unique
+  type          String
   value         Float
-  minOrderValue Float    @default(0)
+  minOrderValue Float         @default(0)
   maxDiscount   Float?
   startDate     DateTime
   endDate       DateTime
-  category      String   @default("ALL") // ALL, HOTEL, FLIGHT, TOUR
-  isActive      Boolean  @default(true)
+  category      String        @default("ALL")
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   userVouchers  UserVoucher[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
 }
 
 model UserVoucher {
   id        Int      @id @default(autoincrement())
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
   voucherId Int
-  voucher   Voucher  @relation(fields: [voucherId], references: [id])
   isUsed    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  voucher   Voucher  @relation(fields: [voucherId], references: [id])
 }
 
 model Flight {
-  id          Int      @id @default(autoincrement())
-  code        String   @unique // Original flight code (e.g. VN203)
-  name        String
-  description String?
-  location    String?
-  price       Float?
-  image       String?
-  rating      Float?   @default(0)
-  category    String   @default("DOMESTIC") // DOMESTIC or INTERNATIONAL
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                Int      @id @default(autoincrement())
+  code              String   @unique
+  name              String
+  description       String?
+  location          String?
+  price             Float?
+  image             String?
+  rating            Float?   @default(0)
+  category          String   @default("DOMESTIC")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  availableBusiness Int      @default(5)
+  availableEconomy  Int      @default(5)
 }
 
 model Tour {
@@ -70,76 +72,75 @@ model Tour {
   price       Float?
   image       String?
   rating      Float?   @default(0)
-  category    String   @default("DOMESTIC") // DOMESTIC or INTERNATIONAL
-  itinerary   String?  // Stores JSON string of itinerary
+  category    String   @default("DOMESTIC")
+  itinerary   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  duration    String   @default("3N2Đ")
 }
 
 model Hotel {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?
-  location    String?
-  price       Float?
-  image       String?
-  rating      Float?   @default(0)
-  category    String   @default("DOMESTIC") // DOMESTIC or INTERNATIONAL
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              Int      @id @default(autoincrement())
+  name            String
+  description     String?
+  location        String?
+  price           Float?
+  image           String?
+  rating          Float?   @default(0)
+  category        String   @default("DOMESTIC")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  availableDouble Int      @default(5)
+  availableSingle Int      @default(5)
 }
 
 model Blog {
-  id          Int      @id @default(autoincrement())
-  title       String
-  content     String
-  author      String   @default("Admin")
-  images      String[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  author    String   @default("Admin")
+  images    String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Booking {
-  id            Int      @id @default(autoincrement())
-  userId        Int
-  user          User     @relation(fields: [userId], references: [id])
-  type          String   // TOUR, FLIGHT, HOTEL
-  itemId        Int
-  itemName      String
-  startDate     DateTime
-  endDate       DateTime? // Added for return date
-  price         Float
-  // New fields
-  customerName  String?
-  customerPhone String?
-  totalPeople   Int      @default(1)
-  seatClass     String?  // ECONOMY, BUSINESS (For flights) | SINGLE, DOUBLE (For hotels)
-
-  // Voucher fields
+  id             Int       @id @default(autoincrement())
+  userId         Int
+  type           String
+  itemId         Int
+  itemName       String
+  startDate      DateTime
+  endDate        DateTime?
+  price          Float
+  customerName   String?
+  customerPhone  String?
+  totalPeople    Int       @default(1)
+  seatClass      String?
   voucherCode    String?
-  discountAmount Float   @default(0)
+  discountAmount Float     @default(0)
   finalPrice     Float?
-  
-  status        String   @default("PENDING")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  status         String    @default("PENDING")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  flightId       Int?
+  hotelId        Int?
+  user           User      @relation(fields: [userId], references: [id])
 }
 
 model Review {
   id        Int      @id @default(autoincrement())
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  type      String   // TOUR, FLIGHT, HOTEL
+  type      String
   itemId    Int
   rating    Int      @default(5)
   comment   String
-
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   parentId  Int?
   parent    Review?  @relation("ReviewReplies", fields: [parentId], references: [id])
   replies   Review[] @relation("ReviewReplies")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model OTP {
@@ -153,19 +154,19 @@ model OTP {
 model ChatRoom {
   id        Int           @id @default(autoincrement())
   userId    Int
-  user      User          @relation(fields: [userId], references: [id])
-  status    String        @default("OPEN") // OPEN | CLOSED
+  status    String        @default("OPEN")
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   messages  ChatMessage[]
+  user      User          @relation(fields: [userId], references: [id])
 }
 
 model ChatMessage {
   id         Int      @id @default(autoincrement())
   roomId     Int
-  room       ChatRoom @relation(fields: [roomId], references: [id])
   senderId   Int
-  senderRole String   // USER | ADMIN
+  senderRole String
   content    String
   createdAt  DateTime @default(now())
+  room       ChatRoom @relation(fields: [roomId], references: [id])
 }

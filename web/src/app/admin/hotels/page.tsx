@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Table, Button, Space, Modal, Form, Input, InputNumber, Select, Tag, Typography, message, Card } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
@@ -15,6 +15,7 @@ export default function AdminHotelsPage() {
     const [loading, setLoading] = useState(true);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingHotel, setEditingHotel] = useState<any>(null);
+    const [searchText, setSearchText] = useState('');
     const [form] = Form.useForm();
 
     useEffect(() => {
@@ -124,13 +125,32 @@ export default function AdminHotelsPage() {
 
     return (
         <div style={{ padding: 24 }}>
-            <Card title={
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Title level={3} style={{ margin: 0 }}>Quản lý Khách Sạn</Title>
-                    <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>Thêm Khách Sạn</Button>
-                </div>
-            }>
-                <Table dataSource={hotels} columns={columns} rowKey="id" loading={loading} />
+            <Card 
+                title={
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Title level={3} style={{ margin: 0 }}>Quản lý Khách Sạn</Title>
+                        <Space>
+                            <Input 
+                                placeholder="Tìm khách sạn..." 
+                                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />} 
+                                style={{ width: 250 }}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                allowClear
+                            />
+                            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>Thêm Khách Sạn</Button>
+                        </Space>
+                    </div>
+                }
+            >
+                <Table 
+                    dataSource={hotels.filter((h: any) => 
+                        h.name?.toLowerCase().includes(searchText.toLowerCase()) || 
+                        h.location?.toLowerCase().includes(searchText.toLowerCase())
+                    )} 
+                    columns={columns} 
+                    rowKey="id" 
+                    loading={loading} 
+                />
             </Card>
 
             <Modal

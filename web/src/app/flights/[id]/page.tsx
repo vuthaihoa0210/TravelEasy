@@ -7,6 +7,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import ReviewSection from '@/components/ReviewSection';
 
+import GlobalSearch from '@/components/GlobalSearch';
+
 const { Title, Paragraph, Text } = Typography;
 
 interface Flight {
@@ -18,6 +20,8 @@ interface Flight {
     image?: string;
     rating?: number;
     category?: string;
+    availableEconomy?: number;
+    availableBusiness?: number;
 }
 
 const formatCurrency = (amount: number) => {
@@ -32,6 +36,7 @@ export default function FlightDetailPage() {
     const [loading, setLoading] = useState(true);
     const [relatedHotels, setRelatedHotels] = useState<any[]>([]);
     const [relatedTours, setRelatedTours] = useState<any[]>([]);
+    const [relatedFlights, setRelatedFlights] = useState<any[]>([]);
 
     useEffect(() => {
         if (params?.id) {
@@ -63,8 +68,15 @@ export default function FlightDetailPage() {
                     const related = data.filter(t => t.location === flight.location);
                     setRelatedTours(related.slice(0, 8));
                 });
+
+            fetch('/api/flights')
+                .then(res => res.json())
+                .then((data: any[]) => {
+                    const related = data.filter(f => f.location === flight.location && String(f.id) !== String(params?.id));
+                    setRelatedFlights(related.slice(0, 8));
+                });
         }
-    }, [flight]);
+    }, [flight, params?.id]);
 
     const handleBooking = () => {
         if (!session) {
@@ -134,13 +146,18 @@ export default function FlightDetailPage() {
                                 <Space><DollarOutlined /> Thuế & Phí: Đã bao gồm</Space>
                             </div>
 
+                            <div style={{ display: 'flex', gap: 24, marginTop: 8, fontWeight: 'bold' }}>
+                                <Space><span style={{ color: (flight.availableEconomy || 0) > 0 ? 'green' : 'red' }}>Phổ thông: {(flight.availableEconomy || 0) > 0 ? `Còn ${(flight.availableEconomy || 0)} vé` : 'Hết vé'}</span></Space>
+                                <Space><span style={{ color: (flight.availableBusiness || 0) > 0 ? 'green' : 'red' }}>Thương gia: {(flight.availableBusiness || 0) > 0 ? `Còn ${(flight.availableBusiness || 0)} vé` : 'Hết vé'}</span></Space>
+                            </div>
+
                             <Paragraph>{flight.description}</Paragraph>
 
                             <div style={{ background: '#f5f5f5', padding: 16, borderRadius: 8 }}>
                                 <Row align="middle" justify="space-between">
                                     <Col>
                                         <Text type="secondary">Giá vé từ</Text>
-                                        <Title level={3} style={{ margin: 0, color: '#52c41a' }}>
+                                        <Title level={3} style={{ margin: 0, color: '#0f172a', fontWeight: 900 }}>
                                             {formatCurrency(flight.price || 0)}
                                         </Title>
                                     </Col>
@@ -148,9 +165,10 @@ export default function FlightDetailPage() {
                                         <Button
                                             type="primary"
                                             size="large"
+                                            disabled={(flight.availableEconomy || 0) <= 0 && (flight.availableBusiness || 0) <= 0}
                                             onClick={handleBooking}
                                         >
-                                            Đặt Vé Ngay
+                                            {(flight.availableEconomy || 0) <= 0 && (flight.availableBusiness || 0) <= 0 ? 'Đã hết vé' : 'Đặt Vé Ngay'}
                                         </Button>
                                     </Col>
                                 </Row>
@@ -187,7 +205,7 @@ export default function FlightDetailPage() {
                 )}
 
                 {relatedTours.length > 0 && (
-                    <div>
+                    <div style={{ marginBottom: 32 }}>
                         <Title level={4}>Tour du lịch tại {flight.location}</Title>
                         <Row gutter={[16, 16]}>
                             {relatedTours.map(t => (
@@ -208,7 +226,31 @@ export default function FlightDetailPage() {
                         </Row>
                     </div>
                 )}
+
+                {relatedFlights.length > 0 && (
+                    <div>
+                        <Title level={4}>Vé máy bay khác đến {flight.location}</Title>
+                        <Row gutter={[16, 16]}>
+                            {relatedFlights.map(f => (
+                                <Col xs={24} sm={12} md={8} lg={6} key={f.id}>
+                                    <Card
+                                        hoverable
+                                        cover={<img alt={f.name} src={f.image} style={{ height: 150, objectFit: 'cover' }} />}
+                                        size="small"
+                                        onClick={() => router.push(`/flights/${f.id}`)}
+                                    >
+                                        <Card.Meta title={f.name} description={f.location} />
+                                        <div style={{ marginTop: 8, fontWeight: 'bold', color: '#0f172a' }}>
+                                            {formatCurrency(f.price || 0)}
+                                        </div>
+                                    </Card>
+                                </Col>
+                            ))}
+                        </Row>
+                    </div>
+                )}
             </div>
+            <GlobalSearch />
         </div>
     );
 }

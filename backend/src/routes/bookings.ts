@@ -8,11 +8,50 @@ const prisma = new PrismaClient();
 // Create a booking
 router.post('/', async (req: Request, res: Response) => {
     try {
-        const { userId, type, itemId, itemName, startDate, endDate, price, customerName, customerPhone, totalPeople, seatClass, voucherCode } = req.body;
+        const { userId, type, itemId, itemName, startDate, endDate, price, customerName, customerPhone, totalPeople, seatClass, voucherCode, flightId, hotelId } = req.body;
 
         if (!userId || !type || !itemId || !startDate || !price || !customerName || !customerPhone) {
             res.status(400).json({ error: 'Missing required fields' });
             return;
+        }
+
+        let qty = Number(totalPeople) || 1;
+
+        if (type === 'FLIGHT') {
+            const flight = await prisma.flight.findUnique({ where: { id: Number(itemId) }});
+            if (!flight) return res.status(404).json({ error: 'Flight not found' });
+            if (seatClass === 'BUSINESS') {
+                if (flight.availableBusiness < qty) return res.status(400).json({ error: 'Hết vé thương gia' });
+                await prisma.flight.update({ where: { id: flight.id }, data: { availableBusiness: flight.availableBusiness - qty }});
+            } else {
+                if (flight.availableEconomy < qty) return res.status(400).json({ error: 'Hết vé phổ thông' });
+                await prisma.flight.update({ where: { id: flight.id }, data: { availableEconomy: flight.availableEconomy - qty }});
+            }
+        } else if (type === 'HOTEL') {
+            const hotel = await prisma.hotel.findUnique({ where: { id: Number(itemId) }});
+            if (!hotel) return res.status(404).json({ error: 'Hotel not found' });
+            if (seatClass === 'DOUBLE') {
+                if (hotel.availableDouble < qty) return res.status(400).json({ error: 'Hết phòng đôi' });
+                await prisma.hotel.update({ where: { id: hotel.id }, data: { availableDouble: hotel.availableDouble - qty }});
+            } else {
+                if (hotel.availableSingle < qty) return res.status(400).json({ error: 'Hết phòng đơn' });
+                await prisma.hotel.update({ where: { id: hotel.id }, data: { availableSingle: hotel.availableSingle - qty }});
+            }
+        } else if (type === 'TOUR') {
+            if (flightId) {
+                const flight = await prisma.flight.findUnique({ where: { id: Number(flightId) }});
+                if (flight) {
+                    if (flight.availableEconomy < qty) return res.status(400).json({ error: 'Hết vé chuyến bay kèm theo' });
+                    await prisma.flight.update({ where: { id: flight.id }, data: { availableEconomy: flight.availableEconomy - qty }});
+                }
+            }
+            if (hotelId) {
+                const hotel = await prisma.hotel.findUnique({ where: { id: Number(hotelId) }});
+                if (hotel) {
+                    if (hotel.availableSingle < qty) return res.status(400).json({ error: 'Hết phòng khách sạn kèm theo' });
+                    await prisma.hotel.update({ where: { id: hotel.id }, data: { availableSingle: hotel.availableSingle - qty }});
+                }
+            }
         }
 
         let discountAmount = 0;
@@ -84,8 +123,10 @@ router.post('/', async (req: Request, res: Response) => {
                 price,
                 customerName,
                 customerPhone,
-                totalPeople: Number(totalPeople) || 1,
+                totalPeople: qty,
                 seatClass,
+                flightId: flightId ? Number(flightId) : null,
+                hotelId: hotelId ? Number(hotelId) : null,
                 voucherCode,
                 discountAmount,
                 finalPrice,

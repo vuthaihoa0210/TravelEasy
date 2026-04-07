@@ -1,11 +1,12 @@
 'use client';
 
-import { Button, Col, Input, Row, Space, Statistic, Steps, Tabs, Tag, Typography, Spin } from 'antd';
+import { Button, Col, Input, Row, Space, Statistic, Steps, Tabs, Tag, Typography, Spin, Select } from 'antd';
 import { CompassOutlined, SearchOutlined, ThunderboltOutlined, SafetyOutlined, ClockCircleOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plane, Hotel, Map, Star, ShieldCheck, Zap, Headset, Calendar, ChevronRight, MapPin } from 'lucide-react';
+import { Plane, Hotel, Map as MapIcon, Star, ShieldCheck, Zap, Headset, Calendar, ChevronRight, MapPin, ArrowRight } from 'lucide-react';
+import GlobalSearch from '@/components/GlobalSearch';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -18,6 +19,7 @@ interface Destination {
   image?: string;
   rating?: number;
   category?: string;
+  duration?: string;
 }
 
 const formatCurrency = (amount: number) => {
@@ -44,12 +46,13 @@ const slides = [
 
 export default function HomePage() {
   const router = useRouter();
-  const [searchDest, setSearchDest] = useState('');
-  const [hotels, setHotels] = useState<Destination[]>([]);
-  const [tours, setTours] = useState<Destination[]>([]);
-  const [blogs, setBlogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentSlide, setCurrentSlide] = useState(0);
+    const [searchDest, setSearchDest] = useState('');
+    const [searchType, setSearchType] = useState('tours');
+    const [hotels, setHotels] = useState<Destination[]>([]);
+    const [tours, setTours] = useState<Destination[]>([]);
+    const [blogs, setBlogs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
     Promise.all([
@@ -154,7 +157,7 @@ export default function HomePage() {
         <div className="bg-white rounded-2xl shadow-xl p-5 md:p-8 border border-slate-100">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
-              <CompassOutlined className="text-blue-600" /> Tìm cảm hứng cho chuyến đi
+              <CompassOutlined className="text-slate-900" /> Tìm cảm hứng cho chuyến đi
             </h2>
             <div className="hidden sm:flex items-center gap-6">
                <Statistic title="Điểm đến" value={1200} styles={{ title: { fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8' }, content: { fontSize: 18, color: '#1e293b' } }} />
@@ -162,23 +165,40 @@ export default function HomePage() {
             </div>
           </div>
           
-          <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex flex-col md:flex-row items-stretch gap-0 border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+             <Select
+                size="large"
+                value={searchType}
+                onChange={(val) => setSearchType(val)}
+                className="md:w-36 h-14 custom-search-type-select !rounded-none border-r border-slate-100"
+                variant="borderless"
+                style={{ backgroundColor: '#f8fafc' }}
+                options={[
+                    { label: 'Tour du lịch', value: 'tours' },
+                    { label: 'Khách sạn', value: 'hotels' },
+                    { label: 'Vé máy bay', value: 'flights' }
+                ]}
+            />
             <div className="flex-1 relative group">
-              <div className="absolute inset-y-0 left-4 flex items-center text-slate-400 group-focus-within:text-blue-600 transition-colors">
-                <Map className="w-4 h-4" />
+              <div className="absolute inset-y-0 left-5 flex items-center text-slate-400 group-focus-within:text-slate-900 transition-colors">
+                <MapIcon className="w-4 h-4" />
               </div>
               <input 
                 type="text"
-                placeholder="Bạn muốn đi đâu? (Đà Nẵng, Phú Quốc...)"
-                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                placeholder={
+                    searchType === 'tours' ? "Bạn muốn đi tour ở đâu? (Hà Nội, Sa Pa...)" :
+                    searchType === 'hotels' ? "Bạn muốn ở khách sạn nào? (Đà Nẵng, Phú Quốc...)" :
+                    "Bạn muốn bay đến đâu? (Sài Gòn, Nha Trang...)"
+                }
+                className="w-full h-14 pl-12 pr-4 bg-white border-none focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all text-sm font-medium"
                 value={searchDest}
                 onChange={(e) => setSearchDest(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && router.push(`/hotels?search=${encodeURIComponent(searchDest)}`)}
+                onKeyDown={(e) => e.key === 'Enter' && router.push(`/${searchType}?search=${encodeURIComponent(searchDest)}`)}
               />
             </div>
             <button 
-              onClick={() => router.push(`/hotels?search=${encodeURIComponent(searchDest)}`)}
-              className="cursor-pointer px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2"
+              onClick={() => router.push(`/${searchType}?search=${encodeURIComponent(searchDest)}`)}
+              className="cursor-pointer px-10 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 min-w-[140px]"
             >
               <SearchOutlined /> Tìm ngay
             </button>
@@ -191,42 +211,64 @@ export default function HomePage() {
         <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-6 border-b border-slate-100 pb-8">
           <div className="space-y-2">
             <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight leading-tight">
-              Khách sạn <span className="text-blue-600 italic">đẳng cấp</span>
+              Khách sạn <span className="text-slate-900 italic">đẳng cấp</span>
             </h2>
             <p className="text-sm text-slate-400 font-light max-w-lg">
               Tuyển chọn những không gian lưu trú tinh tế và sang trọng nhất.
             </p>
           </div>
-          <Link href="/hotels" className="group flex items-center gap-2 text-blue-600 font-bold hover:gap-3 transition-all whitespace-nowrap">
+          <Link href="/hotels" className="group flex items-center gap-2 text-slate-900 font-bold hover:gap-3 transition-all whitespace-nowrap">
              Xem tất cả danh mục <ChevronRight className="w-5 h-5" />
           </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {hotels.slice(0, 3).map((h) => (
-            <Link href={`/hotels/${h.id}`} key={h.id} className="group flex flex-col bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-500 hover:-translate-y-1.5 border border-slate-100">
-               <div className="relative h-56 overflow-hidden">
-                 <img src={h.image} alt={h.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                 <div className="absolute top-3 left-3">
-                   <Tag color="blue" className="rounded-full px-2 py-0.5 bg-white/90 backdrop-blur text-blue-600 border-none font-bold uppercase text-[7px] tracking-widest">{h.category || 'Nổi bật'}</Tag>
+          {(() => {
+            const uniqueHotelsMap = new Map<string, any>();
+            hotels.forEach((h: any) => {
+                const loc = h.location || h.name;
+                if (!uniqueHotelsMap.has(loc)) {
+                    uniqueHotelsMap.set(loc, h);
+                }
+            });
+            const uniqueHotels = Array.from(uniqueHotelsMap.values());
+
+            const domestic = uniqueHotels.filter(h => h.category !== 'INTERNATIONAL').sort(() => 0.5 - Math.random()).slice(0, 2);
+            const international = uniqueHotels.filter(h => h.category === 'INTERNATIONAL').sort(() => 0.5 - Math.random()).slice(0, 1);
+            const displayHotels = [...domestic, ...international];
+            
+            return displayHotels.map((h: any) => (
+              <Link href={`/hotels/${h.id}`} key={h.id} className="group flex flex-col bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-500 hover:-translate-y-1.5 border border-slate-100 h-full">
+                 <div className="relative h-64 overflow-hidden">
+                   <img src={h.image} alt={h.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                   <div className="absolute top-4 left-4">
+                     <Tag color={h.category === 'INTERNATIONAL' ? 'gold' : 'blue'} className="rounded-full px-3 py-1 bg-white/90 backdrop-blur text-slate-900 border-none font-bold uppercase text-[8px] tracking-[0.1em] shadow-sm">
+                       {h.category === 'INTERNATIONAL' ? '🌍 Quốc tế' : '📍 Trong nước'}
+                     </Tag>
+                   </div>
+                   <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur rounded-lg px-2 py-1 flex items-center gap-1 shadow-sm">
+                     <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                     <span className="text-[10px] font-bold text-slate-800">4.9</span>
+                   </div>
                  </div>
-                 <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur rounded-lg px-2 py-0.5 flex items-center gap-1 shadow-sm">
-                   <Star className="w-2 h-2 text-amber-500 fill-amber-500" />
-                   <span className="text-[9px] font-bold text-slate-800">4.9</span>
+                 <div className="p-6 flex flex-1 flex-col space-y-4">
+                   <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                     <MapPin className="w-3 h-3 text-blue-500" /> {h.location}
+                   </div>
+                   <h3 className="text-base font-bold text-slate-900 line-clamp-2 leading-snug tracking-tight group-hover:text-blue-600 transition-colors h-12">{h.name}</h3>
+                   <div className="pt-5 border-t border-slate-50 flex items-center justify-between mt-auto">
+                     <div className="flex flex-col">
+                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Giá từ</span>
+                       <span className="text-xl font-black text-slate-900 leading-none mt-1.5">{h.price ? `${formatCurrency(h.price)}` : 'Liên hệ'}</span>
+                     </div>
+                     <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
+                        <ArrowRight className="w-5 h-5" />
+                     </div>
+                   </div>
                  </div>
-               </div>
-               <div className="p-4 space-y-1.5">
-                 <div className="flex items-center gap-1 text-slate-400 text-[9px] font-bold uppercase tracking-widest">
-                   <MapPin className="w-2.5 h-2.5" /> {h.location}
-                 </div>
-                 <h3 className="text-base font-bold text-slate-900 line-clamp-1 tracking-tight group-hover:text-blue-600 transition-colors">{h.name}</h3>
-                 <div className="pt-2.5 border-t border-slate-50 flex items-center justify-between">
-                   <div className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Giá từ</div>
-                   <div className="text-base font-black text-blue-600">{h.price ? `${formatCurrency(h.price)}` : 'Liên hệ'}</div>
-                 </div>
-               </div>
-            </Link>
-          ))}
+              </Link>
+            ));
+          })()}
         </div>
       </section>
 
@@ -235,38 +277,81 @@ export default function HomePage() {
         <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-6 border-b border-slate-100 pb-8">
           <div className="space-y-2">
             <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight leading-tight">
-              Tour du lịch <span className="text-blue-600 italic">đặc sắc</span>
+              Tour du lịch <span className="text-slate-900 italic">đặc sắc</span>
             </h2>
             <p className="text-sm text-slate-400 font-light max-w-lg">
               Hành trình trải nghiệm vạn vật với lịch trình tối ưu nhất.
             </p>
           </div>
-          <Link href="/tours" className="group flex items-center gap-2 text-slate-400 font-bold text-xs hover:text-blue-600 transition-all uppercase tracking-widest">
+          <Link href="/tours" className="group flex items-center gap-2 text-slate-400 font-bold text-xs hover:text-slate-900 transition-all uppercase tracking-widest">
              Khám phá thêm <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-          {tours.slice(0, 4).map((t) => (
-            <Link href={`/tours/${t.id}`} key={t.id} className="group flex flex-col bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-500 hover:-translate-y-1.5 border border-slate-100">
-               <div className="relative h-48 overflow-hidden">
-                 <img src={t.image} alt={t.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                 <div className="absolute top-2.5 left-2.5">
-                   <Tag color="black" className="rounded-full px-2 py-0.5 bg-black/80 backdrop-blur text-white border-none font-bold uppercase text-[7px] tracking-widest">Tour Hot</Tag>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {(() => {
+            // Deduplicate by location to avoid duplicate titles like "Hà Nội: 3N2Đ..."
+            const uniqueToursMap = new Map<string, any>();
+            tours.forEach((t: any) => {
+                const locationKey = t.location || t.name;
+                if (!uniqueToursMap.has(locationKey)) {
+                    uniqueToursMap.set(locationKey, t);
+                }
+            });
+            const uniqueToursList = Array.from(uniqueToursMap.values());
+
+            const domestic = uniqueToursList.filter((t: any) => t.category !== 'INTERNATIONAL').sort(() => 0.5 - Math.random()).slice(0, 2);
+            const international = uniqueToursList.filter((t: any) => t.category === 'INTERNATIONAL').sort(() => 0.5 - Math.random()).slice(0, 1);
+            const displayTours = [...domestic, ...international];
+            
+            return displayTours.map((t: any) => (
+              <Link href={`/tours/${t.id}`} key={t.id} className="group flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-500 hover:-translate-y-1.5 border border-slate-100 h-full">
+                 <div className="relative h-64 overflow-hidden">
+                   <img src={t.image} alt={t.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                   <div className="absolute top-4 left-4">
+                     <Tag color={t.category === 'INTERNATIONAL' ? 'gold' : 'black'} className="rounded-full px-3 py-1 bg-white/90 backdrop-blur text-slate-900 border-none font-bold uppercase text-[8px] tracking-[0.1em] shadow-sm">
+                       {t.category === 'INTERNATIONAL' ? '🌍 Quốc tế' : '📍 Trong nước'}
+                     </Tag>
+                   </div>
                  </div>
-               </div>
-               <div className="p-4 space-y-1.5">
-                 <div className="flex items-center gap-1 text-slate-400 text-[9px] font-bold uppercase tracking-widest">
-                   <Calendar className="w-2.5 h-2.5" /> 3 ngày 2 đêm
+                 <div className="p-6 flex flex-col flex-1 space-y-4">
+                   <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                     <MapPin className="w-3 h-3 text-blue-500" /> {t.location}
+                   </div>
+
+                   <div className="space-y-1">
+                     <h3 className="text-base font-bold text-slate-900 line-clamp-2 leading-snug tracking-tight group-hover:text-blue-600 transition-colors h-12">
+                       {t.name}
+                     </h3>
+                     
+                     <div className="flex flex-col gap-1.5 mt-1">
+                       {(() => {
+                         const hotelMatch = hotels.find((h: any) => h.location?.toLowerCase().includes(t.location?.toLowerCase() || ''));
+                         return hotelMatch ? (
+                           <div className="flex items-center gap-1.5 text-[9px] font-bold text-blue-600 uppercase tracking-widest bg-blue-50/50 w-fit px-2 py-0.5 rounded-full">
+                             <Hotel className="w-2.5 h-2.5" /> {hotelMatch.name}
+                           </div>
+                         ) : null;
+                       })()}
+                       <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest bg-slate-50 w-fit px-2 py-0.5 rounded-full">
+                         <Plane className="w-2.5 h-2.5" /> Vietnam Airlines / Bamboo
+                       </div>
+                     </div>
+                   </div>
+
+                   <div className="pt-5 flex items-center justify-between border-t border-slate-50 mt-auto">
+                     <div className="flex flex-col">
+                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Giá trọn gói</span>
+                       <span className="text-xl font-black text-slate-900 leading-none mt-1.5">{formatCurrency(t.price || 0)}</span>
+                     </div>
+                     <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
+                        <ArrowRight className="w-5 h-5" />
+                     </div>
+                   </div>
                  </div>
-                 <h3 className="text-sm font-bold text-slate-900 line-clamp-2 leading-tight tracking-tight group-hover:text-blue-600 transition-colors h-10">{t.name}</h3>
-                 <div className="pt-2 flex items-center justify-between border-t border-slate-50 mt-1">
-                   <div className="text-[9px] font-black text-blue-600">{formatCurrency(t.price || 0)}</div>
-                   <div className="text-[9px] font-bold text-slate-300">/khách</div>
-                 </div>
-               </div>
-            </Link>
-          ))}
+              </Link>
+            ));
+          })()}
         </div>
       </section>
 
@@ -286,7 +371,7 @@ export default function HomePage() {
              ].map((item, idx) => (
                <div key={idx} className="group text-center space-y-6">
                  <div className="w-16 h-16 rounded-2xl bg-white shadow-xl shadow-blue-500/5 flex items-center justify-center mb-6 mx-auto group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
-                   <div className="text-blue-600 group-hover:text-white transition-colors">{item.icon}</div>
+                   <div className="text-slate-900 group-hover:text-white transition-colors">{item.icon}</div>
                  </div>
                  <h3 className="text-base font-bold text-slate-800 uppercase tracking-widest">{item.title}</h3>
                  <p className="text-slate-500 text-xs leading-relaxed font-light px-4">{item.desc}</p>
@@ -315,7 +400,7 @@ export default function HomePage() {
                 { step: "04", title: "Xác nhận", desc: "Nhận thông tin đặt chỗ và sẵn sàng khởi hành." },
               ].map((item, idx) => (
                 <div key={idx} className="relative z-10 text-center space-y-6 group">
-                   <div className="w-12 h-12 rounded-full bg-white border-2 border-slate-100 flex items-center justify-center mx-auto text-blue-600 font-bold group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-all duration-500">
+                   <div className="w-12 h-12 rounded-full bg-white border-2 border-slate-100 flex items-center justify-center mx-auto text-slate-900 font-bold group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-all duration-500">
                       {item.step}
                    </div>
                    <h3 className="text-base font-bold text-slate-800 uppercase tracking-widest">{item.title}</h3>
@@ -330,7 +415,7 @@ export default function HomePage() {
       <section id="blogs-section" className="py-24 max-w-7xl mx-auto px-6 scroll-mt-24">
         <div className="flex items-center justify-between mb-12">
            <h2 className="text-3xl md:text-3xl font-bold text-slate-800 tracking-tight uppercase tracking-[0.1em]">Cẩm nang du lịch</h2>
-           <Link href="/blogs" className="text-blue-600 font-bold hover:underline text-sm uppercase tracking-widest">Xem thêm</Link>
+           <Link href="/blogs" className="text-slate-900 font-bold hover:underline text-sm uppercase tracking-widest">Xem thêm</Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
            {blogs.slice(0, 4).map((post) => (
@@ -338,7 +423,7 @@ export default function HomePage() {
                <div className="relative h-48 rounded-2xl overflow-hidden mb-4 shadow-lg">
                  <img src={post.images?.[0]} alt={post.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                </div>
-               <h3 className="text-lg font-bold text-slate-900 line-clamp-2 leading-tight group-hover:text-blue-600 transition-colors">{post.title}</h3>
+               <h3 className="text-lg font-bold text-slate-900 line-clamp-2 leading-tight group-hover:text-slate-900 transition-colors">{post.title}</h3>
                <div className="mt-2 text-slate-400 text-xs font-medium">{new Date(post.createdAt).toLocaleDateString('vi-VN')}</div>
              </Link>
            ))}

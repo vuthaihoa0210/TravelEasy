@@ -3,7 +3,7 @@
 import { Col, Row, Tag, Select, Pagination, Slider, Spin } from 'antd';
 import { useMemo, useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MapPin, Star, ArrowRight, Search } from 'lucide-react';
+import { MapPin, Star, ArrowRight, Search, Calendar, Hotel, Plane } from 'lucide-react';
 
 const PAGE_SIZE = 8;
 
@@ -16,6 +16,7 @@ interface Destination {
   image?: string;
   rating?: number;
   category?: string;
+  duration?: string;
 }
 
 const formatCurrency = (amount: number) => {
@@ -30,6 +31,7 @@ const removeAccents = (str: string) => {
 function ToursContent() {
   const router = useRouter();
   const [tours, setTours] = useState<Destination[]>([]);
+  const [hotels, setHotels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('ALL');
@@ -38,16 +40,17 @@ function ToursContent() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 30000000]);
 
   useEffect(() => {
-    fetch('/api/tours')
-      .then(res => res.json())
-      .then(data => {
-        setTours(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+    Promise.all([
+      fetch('/api/tours').then(res => res.json()),
+      fetch('/api/hotels').then(res => res.json())
+    ]).then(([toursData, hotelsData]) => {
+      setTours(toursData);
+      setHotels(hotelsData);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
   }, []);
 
   const searchParams = useSearchParams();
@@ -64,6 +67,9 @@ function ToursContent() {
 
   const filteredAndSortedTours = useMemo(() => {
     let filtered = tours;
+    
+    /* Removed duplicate location filter to allow Hà Nội 3N2Đ and Hà Nội 5N4Đ */
+
     if (activeTab !== 'ALL') {
       filtered = filtered.filter(t => t.category === activeTab);
     }
@@ -212,13 +218,28 @@ function ToursContent() {
                          </div>
                       </div>
                       
-                      <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug tracking-tight">
-                        {t.name}
-                      </h3>
-                      
-                      <p className="text-xs text-slate-500 font-light line-clamp-2 leading-relaxed flex-1">
-                        {t.description}
-                      </p>
+                       <div className="space-y-1">
+                        <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug tracking-tight h-12">
+                          {t.name}
+                        </h3>
+                        
+                        <div className="flex flex-col gap-1.5 mt-1">
+                          {(() => {
+                            const hotelMatch = hotels.find((h: any) => 
+                              h.location?.toLowerCase().includes(t.location?.toLowerCase() || '') ||
+                              t.location?.toLowerCase().includes(h.location?.toLowerCase() || '')
+                            );
+                            return (
+                              <div className="flex items-center gap-1.5 text-[9px] font-bold text-blue-600 uppercase tracking-widest bg-blue-50/50 w-fit px-2 py-0.5 rounded-full">
+                                <Hotel className="w-2.5 h-2.5" /> {hotelMatch?.name || 'Khách sạn Resort & Spa'}
+                              </div>
+                            );
+                          })()}
+                          <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest bg-slate-50 w-fit px-2 py-0.5 rounded-full">
+                            <Plane className="w-2.5 h-2.5" /> Vietnam Airlines / Bamboo
+                          </div>
+                        </div>
+                      </div>
                       
                       <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
                         <div className="flex flex-col">

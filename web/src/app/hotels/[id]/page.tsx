@@ -8,6 +8,8 @@ import { useSession } from 'next-auth/react';
 import ReviewSection from '@/components/ReviewSection';
 import ImageGallery from '@/components/ImageGallery';
 
+import GlobalSearch from '@/components/GlobalSearch';
+
 const { Title, Paragraph, Text } = Typography;
 
 interface Hotel {
@@ -19,6 +21,8 @@ interface Hotel {
     image?: string;
     rating?: number;
     category?: string;
+    availableSingle?: number;
+    availableDouble?: number;
 }
 
 const formatCurrency = (amount: number) => {
@@ -33,6 +37,7 @@ export default function HotelDetailPage() {
     const [loading, setLoading] = useState(true);
     const [relatedTours, setRelatedTours] = useState<any[]>([]);
     const [relatedFlights, setRelatedFlights] = useState<any[]>([]);
+    const [relatedHotels, setRelatedHotels] = useState<any[]>([]);
 
     useEffect(() => {
         if (params?.id) {
@@ -64,8 +69,15 @@ export default function HotelDetailPage() {
                     const related = data.filter(f => f.location === hotel.location);
                     setRelatedFlights(related.slice(0, 8));
                 });
+
+            fetch('/api/hotels')
+                .then(res => res.json())
+                .then((data: any[]) => {
+                    const related = data.filter(h => h.location === hotel.location && String(h.id) !== String(params?.id));
+                    setRelatedHotels(related.slice(0, 8));
+                });
         }
-    }, [hotel]);
+    }, [hotel, params?.id]);
 
     const handleBooking = () => {
         if (!session) {
@@ -140,13 +152,18 @@ export default function HotelDetailPage() {
                                 </Space>
                             </div>
 
+                            <div style={{ display: 'flex', gap: 24, marginTop: 8, fontWeight: 'bold' }}>
+                                <Space><span style={{ color: (hotel.availableSingle || 0) > 0 ? 'green' : 'red' }}>Phòng đơn: {(hotel.availableSingle || 0) > 0 ? `Còn ${(hotel.availableSingle || 0)} phòng` : 'Hết phòng'}</span></Space>
+                                <Space><span style={{ color: (hotel.availableDouble || 0) > 0 ? 'green' : 'red' }}>Phòng đôi: {(hotel.availableDouble || 0) > 0 ? `Còn ${(hotel.availableDouble || 0)} phòng` : 'Hết phòng'}</span></Space>
+                            </div>
+
                             <Paragraph>{hotel.description}</Paragraph>
 
                             <div style={{ background: '#f5f5f5', padding: 16, borderRadius: 8 }}>
                                 <Row align="middle" justify="space-between">
                                     <Col>
                                         <Text type="secondary">Giá từ</Text>
-                                        <Title level={3} style={{ margin: 0, color: '#1677ff' }}>
+                                        <Title level={3} style={{ margin: 0, color: '#0f172a', fontWeight: 900 }}>
                                             {formatCurrency(hotel.price || 0)}/đêm
                                         </Title>
                                     </Col>
@@ -154,9 +171,10 @@ export default function HotelDetailPage() {
                                         <Button
                                             type="primary"
                                             size="large"
+                                            disabled={(hotel.availableSingle || 0) <= 0 && (hotel.availableDouble || 0) <= 0}
                                             onClick={handleBooking}
                                         >
-                                            Đặt Phòng Ngay
+                                            {(hotel.availableSingle || 0) <= 0 && (hotel.availableDouble || 0) <= 0 ? 'Đã hết phòng' : 'Đặt Phòng Ngay'}
                                         </Button>
                                     </Col>
                                 </Row>
@@ -193,7 +211,7 @@ export default function HotelDetailPage() {
                 )}
 
                 {relatedFlights.length > 0 && (
-                    <div>
+                    <div style={{ marginBottom: 32 }}>
                         <Title level={4}>Vé máy bay đến {hotel.location}</Title>
                         <Row gutter={[16, 16]}>
                             {relatedFlights.map(f => (
@@ -214,7 +232,31 @@ export default function HotelDetailPage() {
                         </Row>
                     </div>
                 )}
+
+                {relatedHotels.length > 0 && (
+                    <div>
+                        <Title level={4}>Khách sạn khác tại {hotel.location}</Title>
+                        <Row gutter={[16, 16]}>
+                            {relatedHotels.map(h => (
+                                <Col xs={24} sm={12} md={8} lg={6} key={h.id}>
+                                    <Card
+                                        hoverable
+                                        cover={<img alt={h.name} src={h.image} style={{ height: 150, objectFit: 'cover' }} />}
+                                        size="small"
+                                        onClick={() => router.push(`/hotels/${h.id}`)}
+                                    >
+                                        <Card.Meta title={h.name} description={h.location} />
+                                        <div style={{ marginTop: 8, fontWeight: 'bold', color: '#0f172a' }}>
+                                            {formatCurrency(h.price || 0)}/đêm
+                                        </div>
+                                    </Card>
+                                </Col>
+                            ))}
+                        </Row>
+                    </div>
+                )}
             </div>
+            <GlobalSearch />
         </div>
     );
 }
