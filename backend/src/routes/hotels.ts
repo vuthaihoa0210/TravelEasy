@@ -42,6 +42,8 @@ router.post('/', async (req: Request, res: Response) => {
                 image: data.image || '/images/default.jpg',
                 rating: Number(data.rating || 0),
                 category: data.category || 'DOMESTIC',
+                availableSingle: Number(data.availableSingle || 5),
+                availableDouble: Number(data.availableDouble || 5)
             }
         });
         res.status(201).json(newHotel);
@@ -66,6 +68,8 @@ router.put('/:id', async (req: Request, res: Response) => {
                 image: data.image,
                 rating: Number(data.rating),
                 category: data.category,
+                availableSingle: Number(data.availableSingle),
+                availableDouble: Number(data.availableDouble)
             }
         });
         res.json(updated);

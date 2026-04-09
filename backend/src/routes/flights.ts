@@ -44,6 +44,8 @@ router.post('/', async (req: Request, res: Response) => {
                 image: data.image || '/images/default.jpg',
                 rating: Number(data.rating || 0),
                 category: data.category || 'DOMESTIC',
+                availableEconomy: Number(data.availableEconomy || 5),
+                availableBusiness: Number(data.availableBusiness || 5)
             }
         });
         res.status(201).json(newFlight);
@@ -69,6 +71,8 @@ router.put('/:id', async (req: Request, res: Response) => {
                 image: data.image,
                 rating: Number(data.rating),
                 category: data.category,
+                availableEconomy: Number(data.availableEconomy),
+                availableBusiness: Number(data.availableBusiness)
             }
         });
         res.json(updated);

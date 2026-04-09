@@ -112,6 +112,8 @@ export default function AdminHotelsPage() {
             key: 'category',
             render: (cat: string) => <Tag color={cat === 'DOMESTIC' ? 'green' : 'blue'}>{cat}</Tag>
         },
+        { title: 'Phòng Đơn', dataIndex: 'availableSingle', key: 'availableSingle' },
+        { title: 'Phòng Đôi', dataIndex: 'availableDouble', key: 'availableDouble' },
         {
             title: 'Hành động',
             key: 'action',
@@ -176,6 +178,14 @@ export default function AdminHotelsPage() {
                         </Form.Item>
                         <Form.Item name="category" label="Loại" rules={[{ required: true }]}>
                             <Select options={[{ value: 'DOMESTIC', label: 'Trong nước' }, { value: 'INTERNATIONAL', label: 'Quốc tế' }]} />
+                        </Form.Item>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <Form.Item name="availableSingle" label="Số phòng đơn còn trống" rules={[{ required: true }]}>
+                            <InputNumber style={{ width: '100%' }} min={0} />
+                        </Form.Item>
+                        <Form.Item name="availableDouble" label="Số phòng đôi còn trống" rules={[{ required: true }]}>
+                            <InputNumber style={{ width: '100%' }} min={0} />
                         </Form.Item>
                     </div>
                     <Form.Item name="image" label="Link Ảnh">

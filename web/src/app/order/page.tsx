@@ -338,13 +338,19 @@ function OrderContent() {
                 }));
             }
 
-            await Promise.all(promises);
+            await Promise.all(promises.map(p => p.then(async res => {
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || 'Đặt hàng thất bại');
+                }
+                return res.json();
+            })));
             message.success('Đặt hàng thành công!');
             router.push('/order/success');
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            message.error('Có lỗi xảy ra, vui lòng thử lại.');
+            message.error(error.message || 'Có lỗi xảy ra, vui lòng thử lại.');
         }
     };
 
@@ -485,10 +491,20 @@ function OrderContent() {
                                                                     {...restField}
                                                                     name={[name, 'quantity']}
                                                                     label="SL"
-                                                                    rules={[{ required: true }]}
+                                                                    rules={[{ required: true, message: 'Nhập SL' }]}
                                                                     style={{ margin: 0, width: 80 }}
                                                                 >
-                                                                    <InputNumber min={1} style={{ width: '100%' }} />
+                                                                    <InputNumber 
+                                                                        min={1} 
+                                                                        max={form.getFieldValue(['rooms', name, 'roomType']) === 'DOUBLE' ? item?.availableDouble : item?.availableSingle} 
+                                                                        style={{ width: '100%' }} 
+                                                                        onChange={(val) => {
+                                                                            const maxVal = form.getFieldValue(['rooms', name, 'roomType']) === 'DOUBLE' ? item?.availableDouble : item?.availableSingle;
+                                                                            if (val && val >= maxVal) {
+                                                                                message.warning(`Đã đạt số lượng phòng tối đa hiện có (${maxVal})`);
+                                                                            }
+                                                                        }}
+                                                                    />
                                                                 </Form.Item>
                                                             </div>
                                                             <Form.Item
@@ -549,10 +565,21 @@ function OrderContent() {
                                                         <Form.Item
                                                             {...restField}
                                                             name={[name, 'quantity']}
-                                                            rules={[{ required: true }]}
+                                                            rules={[{ required: true, message: 'Nhập SL' }]}
                                                             style={{ margin: 0, width: 80 }}
                                                         >
-                                                            <InputNumber min={1} placeholder="SL" style={{ width: '100%' }} />
+                                                            <InputNumber 
+                                                                min={1} 
+                                                                max={form.getFieldValue(['outboundSeats', name, 'seatClass']) === 'BUSINESS' ? item?.availableBusiness : item?.availableEconomy} 
+                                                                placeholder="SL" 
+                                                                style={{ width: '100%' }} 
+                                                                onChange={(val) => {
+                                                                    const maxVal = form.getFieldValue(['outboundSeats', name, 'seatClass']) === 'BUSINESS' ? item?.availableBusiness : item?.availableEconomy;
+                                                                    if (val && val >= maxVal) {
+                                                                        message.warning(`Đã đạt số lượng ghế tối đa hiện có (${maxVal})`);
+                                                                    }
+                                                                }}
+                                                            />
                                                         </Form.Item>
                                                         <MinusCircleOutlined onClick={() => remove(name)} style={{ color: 'red' }} />
                                                     </div>
@@ -608,10 +635,21 @@ function OrderContent() {
                                                                 <Form.Item
                                                                     {...restField}
                                                                     name={[name, 'quantity']}
-                                                                    rules={[{ required: true }]}
+                                                                    rules={[{ required: true, message: 'Nhập SL' }]}
                                                                     style={{ margin: 0, width: 80 }}
                                                                 >
-                                                                    <InputNumber min={1} placeholder="SL" style={{ width: '100%' }} />
+                                                                    <InputNumber 
+                                                                        min={1} 
+                                                                        max={form.getFieldValue(['inboundSeats', name, 'seatClass']) === 'BUSINESS' ? item?.availableBusiness : item?.availableEconomy} 
+                                                                        placeholder="SL" 
+                                                                        style={{ width: '100%' }} 
+                                                                        onChange={(val) => {
+                                                                            const maxVal = form.getFieldValue(['inboundSeats', name, 'seatClass']) === 'BUSINESS' ? item?.availableBusiness : item?.availableEconomy;
+                                                                            if (val && val >= maxVal) {
+                                                                                message.warning(`Đã đạt số lượng ghế tối đa hiện có (${maxVal})`);
+                                                                            }
+                                                                        }}
+                                                                    />
                                                                 </Form.Item>
                                                                 <MinusCircleOutlined onClick={() => remove(name)} style={{ color: 'red' }} />
                                                             </div>
@@ -652,8 +690,8 @@ function OrderContent() {
                                     <Form.Item name="returnDate" label="Ngày về (Dự kiến)">
                                         <Input disabled style={{ backgroundColor: '#f5f5f5', color: '#000', fontWeight: 'bold' }} />
                                     </Form.Item>
-                                    <Form.Item name="totalPeople" label="Số lượng khách" rules={[{ required: true }]}>
-                                        <InputNumber min={1} style={{ width: '100%' }} />
+                                    <Form.Item name="totalPeople" label="Số lượng khách" rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}>
+                                        <InputNumber min={1} max={50} style={{ width: '100%' }} />
                                     </Form.Item>
                                 </>
                             )}

@@ -50,9 +50,16 @@ export default function AdminBookingsPage() {
     }, [status, session]);
 
     const handleUpdateStatus = (id: string, status: string) => {
+        const statusMap: { [key: string]: string } = {
+            'CONFIRMED': 'Đã xác nhận',
+            'PAID': 'Đã thanh toán',
+            'CANCELLED': 'Đã hủy'
+        };
+        const statusText = statusMap[status] || status;
+
         Modal.confirm({
             title: 'Xác nhận',
-            content: `Bạn có chắc muốn chuyển trạng thái đơn hàng này sang ${status}?`,
+            content: `Bạn có chắc muốn chuyển trạng thái đơn hàng này sang "${statusText}"?`,
             onOk: async () => {
                 try {
                     const res = await fetch(`/api/bookings/${id}`, {

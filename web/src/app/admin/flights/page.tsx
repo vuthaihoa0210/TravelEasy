@@ -113,6 +113,8 @@ export default function AdminFlightsPage() {
             key: 'category',
             render: (cat: string) => <Tag color={cat === 'DOMESTIC' ? 'green' : 'blue'}>{cat}</Tag>
         },
+        { title: 'Ghế Phổ thông', dataIndex: 'availableEconomy', key: 'availableEconomy' },
+        { title: 'Ghế Thương gia', dataIndex: 'availableBusiness', key: 'availableBusiness' },
         {
             title: 'Hành động',
             key: 'action',
@@ -181,6 +183,14 @@ export default function AdminFlightsPage() {
                         </Form.Item>
                         <Form.Item name="category" label="Loại" rules={[{ required: true }]}>
                             <Select options={[{ value: 'DOMESTIC', label: 'Trong nước' }, { value: 'INTERNATIONAL', label: 'Quốc tế' }]} />
+                        </Form.Item>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <Form.Item name="availableEconomy" label="Số ghế phổ thông còn trống" rules={[{ required: true }]}>
+                            <InputNumber style={{ width: '100%' }} min={0} />
+                        </Form.Item>
+                        <Form.Item name="availableBusiness" label="Số ghế thương gia còn trống" rules={[{ required: true }]}>
+                            <InputNumber style={{ width: '100%' }} min={0} />
                         </Form.Item>
                     </div>
                     <Form.Item name="image" label="Link Ảnh">
