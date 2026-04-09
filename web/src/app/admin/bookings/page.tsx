@@ -111,6 +111,8 @@ export default function AdminBookingsPage() {
                     <div>Ngày đi: {dayjs(record.startDate).format('DD/MM/YYYY')}</div>
                     {record.endDate && <div>Ngày về: {dayjs(record.endDate).format('DD/MM/YYYY')}</div>}
                     <div>SL: {record.totalPeople} | {record.seatClass || 'N/A'}</div>
+                    {record.flight && <div style={{ fontSize: 12, marginTop: 4, color: '#1677ff' }}>✈️ {record.flight.name}</div>}
+                    {record.hotel && <div style={{ fontSize: 12, color: '#52c41a' }}>🏨 {record.hotel.name}</div>}
                 </div>
             )
         },

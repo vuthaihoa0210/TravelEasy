@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { Divider } from 'antd';
 import { 
   ChevronDown, 
   Menu, 
@@ -12,18 +13,23 @@ import {
   User, 
   LogOut, 
   Phone,
+  Sun,
+  Moon,
   ChevronRight,
   Map,
   Hotel,
   Plane
 } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function Header() {
   const { data: session } = useSession();
+  const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isExploreOpen, setIsExploreOpen] = useState(false);
+  const [isHomeOpen, setIsHomeOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -131,9 +137,41 @@ export default function Header() {
           <nav className="grid grid-cols-[1fr_auto_1fr] items-center">
             {/* Left Menu Items (Aligned with Hotline start) */}
             <div className="hidden lg:flex items-center gap-8 text-[11px] font-bold text-white uppercase tracking-[0.15em] justify-start">
-              <Link href="/" className="hover:text-amber-500 transition-colors flex items-center gap-1.5">
-                Trang chủ <ChevronRight className="w-3.5 h-3.5 text-white animate-pulse" strokeWidth={4} />
-               </Link>
+              {/* Trang chủ with Dropdown for Theme */}
+              <div 
+                className="relative cursor-pointer group"
+                onMouseEnter={() => setIsHomeOpen(true)}
+                onMouseLeave={() => setIsHomeOpen(false)}
+              >
+                <div className="hover:text-amber-500 transition-colors flex items-center gap-1.5">
+                  Trang chủ <ChevronDown className={`w-3.5 h-3.5 text-white transition-transform duration-300 ${isHomeOpen ? 'rotate-180' : ''}`} />
+                </div>
+                
+                <div className={`absolute top-full -left-4 pt-4 w-56 transition-all duration-300 ${isHomeOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}`}>
+                  <div className="bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl py-2">
+                    <Link href="/" className="flex items-center gap-3 px-6 py-3.5 hover:bg-white/5 transition-colors group/item">
+                       <ChevronRight className="w-4 h-4 text-white/40 group-hover/item:text-amber-500" strokeWidth={3} />
+                       <span className="text-[10px] text-white/70 group-hover/item:text-white font-bold tracking-widest uppercase">Về trang chủ</span>
+                    </Link>
+                    <Divider className="my-1 border-white/5" />
+                    <button 
+                      onClick={() => setTheme('light')}
+                      className={`w-full flex items-center gap-3 px-6 py-3.5 hover:bg-white/5 transition-colors group/item ${theme === 'light' ? 'bg-white/10' : ''}`}
+                    >
+                      <Sun className={`w-4 h-4 ${theme === 'light' ? 'text-amber-500' : 'text-white/40 group-hover/item:text-amber-500'}`} />
+                      <span className={`text-[10px] uppercase font-bold tracking-widest ${theme === 'light' ? 'text-white' : 'text-white/70 group-hover/item:text-white'}`}>Chế độ sáng</span>
+                    </button>
+                    <button 
+                      onClick={() => setTheme('dark')}
+                      className={`w-full flex items-center gap-3 px-6 py-3.5 hover:bg-white/5 transition-colors group/item ${theme === 'dark' ? 'bg-white/10' : ''}`}
+                    >
+                      <Moon className={`w-4 h-4 ${theme === 'dark' ? 'text-blue-400' : 'text-white/40 group-hover/item:text-blue-400'}`} />
+                      <span className={`text-[10px] uppercase font-bold tracking-widest ${theme === 'dark' ? 'text-white' : 'text-white/70 group-hover/item:text-white'}`}>Chế độ tối</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <Link href="/about" className="hover:text-amber-500 transition-colors">Giới thiệu</Link>
               
               {/* Explore Dropdown */}
@@ -199,48 +237,109 @@ export default function Header() {
 
       </div>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Backdrop */}
       <div 
-        className={`lg:hidden fixed inset-0 z-50 transition-all duration-500 overflow-y-auto ${
+        className={`lg:hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
           isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
-        style={{ backgroundColor: 'rgba(15, 23, 42, 0.98)', backdropFilter: 'blur(20px)' }}
-      >
-        <div className="flex flex-col items-center justify-start min-h-screen pt-24 pb-12 space-y-8 text-white font-bold uppercase tracking-widest p-6">
-           <Link href="/" onClick={()=>setIsMenuOpen(false)} className="text-xl hover:text-amber-500">Trang chủ</Link>
-           <Link href="/about" onClick={()=>setIsMenuOpen(false)} className="text-xl hover:text-amber-500">Giới thiệu</Link>
-           
-           <div className="w-full max-w-[250px] space-y-4 pt-4 border-t border-white/10">
-              <p className="text-[10px] text-amber-500 text-center tracking-[0.3em] font-black uppercase">Khám phá</p>
-              <div className="flex flex-col gap-5 items-center">
-                {services.map(s => (
-                  <Link key={s.href} href={s.href} onClick={()=>setIsMenuOpen(false)} className="text-sm text-white/70 hover:text-white flex items-center gap-2">
-                    {s.icon} {s.name}
-                  </Link>
-                ))}
-              </div>
-           </div>
+        onClick={() => setIsMenuOpen(false)}
+      />
 
-           <Link href="/blogs" onClick={()=>setIsMenuOpen(false)} className="text-xl hover:text-amber-500">Tin tức</Link>
-           <button 
-             onClick={() => { setIsMenuOpen(false); window.dispatchEvent(new Event('open_chatbot')); }}
-             className="cursor-pointer text-xl hover:text-amber-500 uppercase font-bold"
-           >
-             Liên hệ
-           </button>
-           <Link href="/vouchers" onClick={()=>setIsMenuOpen(false)} className="text-xl hover:text-amber-500">Ưu đãi</Link>
-           <div className="pt-6 flex flex-col items-center gap-4 w-full px-10">
-              {session ? (
-                 <button onClick={() => signOut()} className="cursor-pointer w-full text-sm border border-white/20 py-3 rounded-full">Đăng xuất</button>
-              ) : (
-                <div className="flex flex-col gap-4 w-full">
-                   <Link href="/auth/signin" onClick={()=>setIsMenuOpen(false)} className="w-full text-sm border border-white/20 py-3 rounded-full text-center">Đăng nhập</Link>
-                   <Link href="/auth/register" onClick={()=>setIsMenuOpen(false)} className="w-full text-sm bg-blue-600 py-3 rounded-full text-center">Đăng ký</Link>
+      {/* Mobile Menu Drawer Sidebar */}
+      <div 
+        className={`lg:hidden fixed top-0 right-0 bottom-0 w-[80%] max-w-[320px] z-[70] bg-slate-900 shadow-2xl transition-transform duration-300 ease-out transform ${
+          isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="flex flex-col h-full bg-slate-900 border-l border-white/10">
+          {/* Header of Sidebar */}
+          <div className="p-6 border-b border-white/10 flex justify-between items-center">
+            <span className="text-xl font-script text-amber-500 italic">TravelEasy</span>
+            <button onClick={()=>setIsMenuOpen(false)} className="text-white hover:text-amber-500 transition-colors">
+              <X className="w-7 h-7" />
+            </button>
+          </div>
+
+          {/* Menu Items */}
+          <div className="flex-1 overflow-y-auto py-6 px-6 space-y-4">
+            <Link href="/" onClick={()=>setIsMenuOpen(false)} className="flex items-center gap-3 text-sm text-white/90 hover:text-amber-500 font-bold uppercase tracking-widest transition-all">
+              <ChevronRight className="w-4 h-4 text-amber-500" /> Trang chủ
+            </Link>
+            <Link href="/about" onClick={()=>setIsMenuOpen(false)} className="flex items-center gap-3 text-sm text-white/90 hover:text-amber-500 font-bold uppercase tracking-widest transition-all">
+              <ChevronRight className="w-4 h-4 text-amber-500" /> Giới thiệu
+            </Link>
+            
+            <div className="py-2 space-y-3">
+              <p className="text-[9px] text-amber-500 font-black uppercase tracking-[0.3em] mb-2">Khám phá</p>
+              {services.map(s => (
+                <Link key={s.href} href={s.href} onClick={()=>setIsMenuOpen(false)} className="flex items-center gap-3 pl-2 text-xs text-white/50 hover:text-white transition-colors uppercase font-bold tracking-widest">
+                  <span className="text-amber-500/50">{s.icon}</span> {s.name}
+                </Link>
+              ))}
+            </div>
+
+            <Link href="/blogs" onClick={()=>setIsMenuOpen(false)} className="flex items-center gap-3 text-sm text-white/90 hover:text-amber-500 font-bold uppercase tracking-widest transition-all">
+              <ChevronRight className="w-4 h-4 text-amber-500" /> Tin tức
+            </Link>
+            <button 
+              onClick={() => { setIsMenuOpen(false); window.dispatchEvent(new Event('open_chatbot')); }}
+              className="w-full flex items-center gap-3 text-sm text-white/90 hover:text-amber-500 font-bold uppercase tracking-widest transition-all text-left"
+            >
+              <ChevronRight className="w-4 h-4 text-amber-500" /> Liên hệ
+            </button>
+            <Link href="/vouchers" onClick={()=>setIsMenuOpen(false)} className="flex items-center gap-3 text-sm text-white/90 hover:text-amber-500 font-bold uppercase tracking-widest transition-all">
+              <ChevronRight className="w-4 h-4 text-amber-500" /> Ưu đãi
+            </Link>
+
+            {/* Theme Toggle in Aligned format */}
+            <div className="pt-4 border-t border-white/5 space-y-3">
+              <p className="text-[9px] text-amber-500 font-black uppercase tracking-[0.3em] mb-2">Giao diện</p>
+              <div className="flex gap-2">
+                 <button 
+                   onClick={() => setTheme('light')}
+                   className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border transition-all ${theme === 'light' ? 'bg-amber-500 border-amber-500 text-slate-900' : 'border-white/10 text-white/40'}`}
+                 >
+                   <Sun className="w-4 h-4" /> <span className="text-[10px] uppercase font-bold">Sáng</span>
+                 </button>
+                 <button 
+                   onClick={() => setTheme('dark')}
+                   className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border transition-all ${theme === 'dark' ? 'bg-blue-600 border-blue-600 text-white' : 'border-white/10 text-white/40'}`}
+                 >
+                   <Moon className="w-4 h-4" /> <span className="text-[10px] uppercase font-bold">Tối</span>
+                 </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar Footer with Greeting */}
+          <div className="p-6 bg-white/5 border-t border-white/10 space-y-4">
+            {session ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-white/40 uppercase font-black tracking-widest">Xin chào,</span>
+                    <span className="text-sm text-white font-bold capitalize">{session.user?.name}</span>
+                  </div>
                 </div>
-              )}
-           </div>
+                <button onClick={() => signOut()} className="w-full flex items-center justify-center gap-2 text-[10px] text-red-400 font-bold uppercase tracking-[0.2em] border border-red-400/20 py-3 rounded-xl hover:bg-red-400/10 transition-all">
+                   <LogOut className="w-4 h-4" /> Đăng xuất
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                 <Link href="/auth/signin" onClick={()=>setIsMenuOpen(false)} className="w-full text-[10px] text-center text-white font-bold uppercase tracking-[0.2em] border border-white/20 py-3 rounded-xl hover:bg-white/5 transition-all">
+                    Đăng nhập
+                 </Link>
+                 <Link href="/auth/register" onClick={()=>setIsMenuOpen(false)} className="w-full text-[10px] text-center text-slate-900 bg-blue-600 font-bold uppercase tracking-[0.2em] py-3 rounded-xl hover:bg-blue-700 transition-all">
+                    Đăng ký
+                 </Link>
+              </div>
+            )}
+          </div>
         </div>
-        <button onClick={()=>setIsMenuOpen(false)} className="absolute top-8 right-8 text-white"><X className="w-10 h-10" /></button>
       </div>
     </header>
   );

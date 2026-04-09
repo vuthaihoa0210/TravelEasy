@@ -30,8 +30,11 @@ export default function AdminHotelsPage() {
         setLoading(true);
         try {
             const res = await fetch('/api/hotels');
-            const data = await res.json();
-            setHotels(data);
+            if (res.ok) {
+                let data: any = [];
+                try { data = await res.json(); } catch { /* non-JSON */ }
+                setHotels(data);
+            }
         } catch (error) {
             message.error('Lỗi tải dữ liệu');
         }

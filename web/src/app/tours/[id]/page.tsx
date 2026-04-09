@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Card, Col, Row, Space, Tag, Typography, Spin, Divider, Timeline, DatePicker, message, Modal } from 'antd';
+import { Button, Card, Col, Row, Space, Tag, Typography, Spin, Divider, Timeline, DatePicker, message, Modal, Image } from 'antd';
 import { EnvironmentOutlined, ClockCircleOutlined, StarFilled, ArrowLeftOutlined, CheckCircleOutlined, LockOutlined } from '@ant-design/icons';
 import { Plane, Hotel, Calendar } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -55,9 +55,19 @@ export default function TourDetailPage() {
 
     const [relatedHotels, setRelatedHotels] = useState<any[]>([]);
     const [relatedFlights, setRelatedFlights] = useState<any[]>([]);
-    const [viewingProduct, setViewingProduct] = useState<any>(null);
-    const [viewType, setViewType] = useState<'hotel' | 'flight' | null>(null);
+    const [selectedHotelId, setSelectedHotelId] = useState<number | null>(null);
+    const [selectedFlightId, setSelectedFlightId] = useState<number | null>(null);
+    // Detail modal state
+    const [detailItem, setDetailItem] = useState<any>(null);
+    const [detailType, setDetailType] = useState<'hotel' | 'flight' | null>(null);
     const [allTours, setAllTours] = useState<Tour[]>([]);
+
+    // Derived: selected hotel & flight objects
+    const selectedHotel = relatedHotels.find(h => h.id === selectedHotelId) || null;
+    const selectedFlight = relatedFlights.find(f => f.id === selectedFlightId) || null;
+
+    // Dynamic total price
+    const totalPrice = (tour?.price || 0) + (selectedHotel?.price || 0) + (selectedFlight?.price || 0);
 
     useEffect(() => {
         if (tour?.location) {
@@ -67,14 +77,16 @@ export default function TourDetailPage() {
                 .then((data: any[]) => {
                     const related = data.filter(h => h.location === tour.location);
                     setRelatedHotels(related.slice(0, 8));
+                    if (related.length > 0) setSelectedHotelId(related[0].id);
                 });
 
-            // Fetch Flights
+            // Fetch Flights — ALL flights to this destination, regardless of departure city
             fetch('/api/flights')
                 .then(res => res.json())
                 .then((data: any[]) => {
                     const related = data.filter(f => f.location === tour.location);
-                    setRelatedFlights(related.slice(0, 8));
+                    setRelatedFlights(related.slice(0, 12));
+                    if (related.length > 0) setSelectedFlightId(related[0].id);
                 });
 
             // Fetch Related Tours
@@ -95,7 +107,10 @@ export default function TourDetailPage() {
             message.error('Vui lòng đăng nhập để đặt tour!');
             return;
         }
-        router.push(`/order?type=TOUR&id=${tour?.id}`);
+        let url = `/order?type=TOUR&id=${tour?.id}`;
+        if (selectedHotelId) url += `&hotelId=${selectedHotelId}`;
+        if (selectedFlightId) url += `&flightId=${selectedFlightId}`;
+        router.push(url);
     };
 
     if (loading) {
@@ -213,205 +228,309 @@ export default function TourDetailPage() {
             </Card>
 
             {/* ── BUNDLED SERVICES SECTION ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                {/* Hotel Card */}
+            <div className="mb-12 space-y-8">
+
+                {/* Hotel Selection */}
                 {relatedHotels.length > 0 && (
-                    <Card 
-                        title={
-                            <div className="flex items-center justify-between w-full">
-                                <div className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-black text-slate-400">
-                                    <Hotel className="w-4 h-4 text-blue-600" /> Lưu trú cao cấp
-                                </div>
-                                <Tag color="green" className="m-0 rounded-full text-[8px] font-black border-none bg-green-500 text-white px-2">ĐÃ BAO GỒM</Tag>
+                    <div>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-black text-slate-400">
+                                <Hotel className="w-4 h-4 text-blue-600" /> Chọn khách sạn lưu trú
                             </div>
-                        }
-                        className="rounded-2xl shadow-sm border-slate-100 overflow-hidden ring-4 ring-green-500/5"
-                        styles={{ body: { padding: 0 } }}
-                    >
-                        <div className="flex flex-col sm:flex-row h-full">
-                            <div className="sm:w-1/3 h-48 sm:h-auto">
-                                <img src={relatedHotels[0].image} className="w-full h-full object-cover" alt={relatedHotels[0].name} />
-                            </div>
-                            <div className="p-6 flex-1 flex flex-col justify-between">
-                                <div>
-                                    <h4 className="text-lg font-bold text-slate-900 mb-1">{relatedHotels[0].name}</h4>
-                                    <div className="flex items-center gap-1 text-amber-500 mb-3">
-                                        <StarFilled className="text-[10px]" /> <span className="text-xs font-bold">{relatedHotels[0].rating?.toFixed(1)}</span>
-                                    </div>
-                                    <p className="text-slate-500 text-xs line-clamp-2 mb-4 font-light leading-relaxed">
-                                        {relatedHotels[0].description}
-                                    </p>
-                                </div>
-                                <Button 
-                                    type="default" 
-                                    className="w-full border-blue-600 text-blue-600 font-bold rounded-xl hover:bg-blue-50"
-                                    onClick={() => {
-                                        setViewingProduct(relatedHotels[0]);
-                                        setViewType('hotel');
-                                    }}
-                                >
-                                    Xem chi tiết phòng
-                                </Button>
-                            </div>
+                            <Tag color="green" className="m-0 rounded-full text-[8px] font-black border-none bg-green-500 text-white px-2">ĐÃ BAO GỒM</Tag>
                         </div>
-                    </Card>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {relatedHotels.map((hotel) => (
+                                <div
+                                    key={hotel.id}
+                                    onClick={() => setSelectedHotelId(hotel.id)}
+                                    className={`cursor-pointer rounded-2xl border-2 overflow-hidden transition-all duration-300 ${
+                                        selectedHotelId === hotel.id
+                                            ? 'border-blue-500 ring-4 ring-blue-500/10 shadow-lg'
+                                            : 'border-slate-100 hover:border-blue-200 hover:shadow-md'
+                                    }`}
+                                >
+                                    <div className="relative h-36 overflow-hidden">
+                                        <img
+                                            src={`https://picsum.photos/seed/hotel-${hotel.id}/400/240`}
+                                            className="w-full h-full object-cover"
+                                            alt={hotel.name}
+                                        />
+                                        {selectedHotelId === hotel.id && (
+                                            <div className="absolute top-2 right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                                                ✓
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="p-3">
+                                        <p className="font-bold text-slate-900 text-sm line-clamp-1">{hotel.name}</p>
+                                        <div className="flex items-center justify-between mt-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-1 text-amber-500 text-xs">
+                                                    <StarFilled style={{ fontSize: 10 }} />
+                                                    <span className="font-bold">{hotel.rating?.toFixed(1)}</span>
+                                                </div>
+                                                <span className="text-[10px] text-slate-400 font-medium">• {hotel.location}</span>
+                                            </div>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setDetailItem(hotel); setDetailType('hotel'); }}
+                                                className="text-[10px] font-bold text-blue-500 hover:text-blue-700 underline whitespace-nowrap"
+                                            >
+                                                Chi tiết
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 )}
 
-                {/* Flight Card */}
+                {/* Flight Selection */}
                 {relatedFlights.length > 0 && (
-                    <Card 
-                        title={
-                            <div className="flex items-center justify-between w-full">
-                                <div className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-black text-slate-400">
-                                    <Plane className="w-4 h-4 text-blue-600" /> Hàng không 5 sao
-                                </div>
-                                <Tag color="green" className="m-0 rounded-full text-[8px] font-black border-none bg-green-500 text-white px-2">ĐÃ BAO GỒM</Tag>
+                    <div>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-black text-slate-400">
+                                <Plane className="w-4 h-4 text-blue-600" /> Chọn chuyến bay đến {tour.location}
                             </div>
-                        }
-                        className="rounded-2xl shadow-sm border-slate-100 overflow-hidden ring-4 ring-green-500/5"
-                        styles={{ body: { padding: 0 } }}
-                    >
-                        <div className="flex flex-col sm:flex-row h-full">
-                            <div className="sm:w-1/3 h-48 sm:h-auto">
-                                <img src={relatedFlights[0].image} className="w-full h-full object-cover" alt={relatedFlights[0].name} />
-                            </div>
-                            <div className="p-6 flex-1 flex flex-col justify-between">
-                                <div>
-                                    <h4 className="text-lg font-bold text-slate-900 mb-1">{relatedFlights[0].name}</h4>
-                                    <Tag color="blue" className="mb-3 rounded-full font-bold uppercase text-[8px] px-2 py-0.5 border-none">Vietnam Airlines / Bamboo</Tag>
-                                    <div className="flex items-center gap-4 text-slate-500 text-xs mb-4 mt-2">
-                                        <div className="flex items-center gap-1"><ClockCircleOutlined /> 2h 30m</div>
-                                        <div className="flex items-center gap-1"><CheckCircleOutlined className="text-green-500" /> Đã bao gồm thuế phí</div>
+                            <Tag color="green" className="m-0 rounded-full text-[8px] font-black border-none bg-green-500 text-white px-2">ĐÃ BAO GỒM</Tag>
+                        </div>
+                        <p className="text-xs text-slate-400 mb-3 font-light">Chọn chuyến bay phù hợp từ thành phố của bạn — tất cả đều đến {tour.location}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {relatedFlights.map((flight) => (
+                                <div
+                                    key={flight.id}
+                                    onClick={() => setSelectedFlightId(flight.id)}
+                                    className={`cursor-pointer rounded-xl border-2 p-4 transition-all duration-300 flex items-center gap-4 ${
+                                        selectedFlightId === flight.id
+                                            ? 'border-blue-500 bg-blue-50 ring-4 ring-blue-500/10 shadow-md'
+                                            : 'border-slate-100 bg-white hover:border-blue-200 hover:shadow-sm'
+                                    }`}
+                                >
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                                        selectedFlightId === flight.id ? 'bg-blue-500' : 'bg-slate-100'
+                                    }`}>
+                                        <Plane className={`w-5 h-5 ${
+                                            selectedFlightId === flight.id ? 'text-white' : 'text-slate-400'
+                                        }`} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-slate-900 text-sm line-clamp-1">{flight.name}</p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="text-[10px] bg-blue-100 text-blue-600 font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                                                {flight.code || 'VN'}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                                                <CheckCircleOutlined className="text-green-500" /> Đến: {flight.location}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="text-right flex-shrink-0">
+                                        <p className="text-xs text-slate-400">+thêm</p>
+                                        <p className="font-black text-blue-600 text-sm">
+                                            {formatCurrency(flight.price)}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col gap-1 flex-shrink-0">
+                                        {selectedFlightId === flight.id ? (
+                                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold">✓</div>
+                                        ) : (
+                                            <div className="w-6 h-6" />
+                                        )}
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setDetailItem(flight); setDetailType('flight'); }}
+                                            className="text-[9px] font-bold text-blue-500 hover:text-blue-700 underline whitespace-nowrap"
+                                        >
+                                            Chi tiết
+                                        </button>
                                     </div>
                                 </div>
-                                <Button 
-                                    type="default" 
-                                    className="w-full border-blue-600 text-blue-600 font-bold rounded-xl hover:bg-blue-50"
-                                    onClick={() => {
-                                        setViewingProduct(relatedFlights[0]);
-                                        setViewType('flight');
-                                    }}
-                                >
-                                    Xem chi tiết chuyến bay
-                                </Button>
-                            </div>
+                            ))}
                         </div>
-                    </Card>
+                    </div>
                 )}
             </div>
 
-            {/* Quick View Modal */}
+            {/* ── DETAIL MODAL ── */}
             <Modal
-                open={!!viewingProduct}
-                onCancel={() => { setViewingProduct(null); setViewType(null); }}
+                open={!!detailItem}
+                onCancel={() => { setDetailItem(null); setDetailType(null); }}
                 footer={null}
-                width={800}
+                width={760}
                 centered
                 styles={{ body: { padding: 0 } }}
                 className="overflow-hidden rounded-3xl"
             >
-                {viewingProduct && (
+                {detailItem && (
                     <div className="flex flex-col">
-                        <div className="md:h-auto relative">
-                             {viewType === 'hotel' ? (
-                                <div className="p-8 pb-0">
-                                    <ImageGallery 
-                                        mainImage={viewingProduct.image} 
-                                        productId={viewingProduct.id} 
-                                        category="hotel" 
-                                        altText={viewingProduct.name} 
+                        {/* Image */}
+                        <div className="h-56 md:h-72 relative overflow-hidden rounded-t-3xl bg-slate-100">
+                            <Image.PreviewGroup>
+                                <div className="absolute inset-0 w-full h-full [&>.ant-image]:w-full [&>.ant-image]:h-full [&_img]:object-cover [&_img]:w-full [&_img]:h-full">
+                                    <Image
+                                        src={`https://picsum.photos/seed/${detailType}-${detailItem.id}-0/1200/800`}
+                                        alt={detailItem.name}
+                                        preview={{ cover: <span className="text-white text-sm font-bold drop-shadow-md">🔍 Xem tất cả ảnh</span> }}
                                     />
                                 </div>
-                             ) : (
-                                <div className="h-64 md:h-80 relative">
-                                    <img src={viewingProduct.image} className="w-full h-full object-cover" alt={viewingProduct.name} />
-                                    <div className="absolute top-6 left-6">
-                                        <Tag color="blue" className="rounded-full px-4 py-1.5 font-bold uppercase tracking-widest text-[10px] border-none shadow-xl">
-                                            Premium Flight
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+                                <div className="absolute bottom-4 left-6 right-6 pointer-events-none">
+                                    <p className="text-white font-black text-2xl leading-tight drop-shadow-lg">{detailItem.name}</p>
+                                    <div className="flex items-center gap-3 mt-1">
+                                        <div className="flex items-center gap-1 text-amber-400 text-sm font-bold">
+                                            <StarFilled style={{ fontSize: 12 }} /> {detailItem.rating?.toFixed(1)}
+                                        </div>
+                                        <span className="text-white/70 text-xs">{detailItem.location}</span>
+                                        <Tag
+                                            color={detailType === 'hotel' ? 'blue' : 'purple'}
+                                            className="border-none rounded-full text-[8px] font-black px-2 m-0"
+                                        >
+                                            {detailType === 'hotel' ? '🏨 Khách sạn' : '✈️ Chuyến bay'}
                                         </Tag>
                                     </div>
                                 </div>
-                             )}
-                        </div>
-                        <div className="p-8 md:p-12 space-y-6">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <Title level={2} className="!mb-0 !font-black tracking-tight">{viewingProduct.name}</Title>
-                                <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-full text-amber-600 font-bold shadow-sm self-start">
-                                    <StarFilled className="text-sm" /> {viewingProduct.rating?.toFixed(1)}
-                                </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-6 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] border-b border-slate-100 pb-6">
-                                <div className="flex items-center gap-2"><EnvironmentOutlined className="text-blue-600 text-sm" /> {viewingProduct.location}</div>
-                                {viewType === 'hotel' && <div className="flex items-center gap-2"><CheckCircleOutlined className="text-blue-600 text-sm" /> 5-Star Facility</div>}
-                                {viewType === 'flight' && <div className="flex items-center gap-2"><ClockCircleOutlined className="text-blue-600 text-sm" /> Direct Flight</div>}
-                            </div>
-
-                            <div className="space-y-4">
-                                <Title level={4} className="!font-bold !text-slate-900">Mô tả dịch vụ</Title>
-                                <Paragraph className="text-slate-500 text-sm leading-relaxed font-light">
-                                    {viewingProduct.description || "Dịch vụ đẳng cấp được chọn lọc kỹ lưỡng để đảm bảo hành trình của bạn trọn vẹn nhất."}
-                                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-                                </Paragraph>
-                            </div>
-
-                            <div className="pt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {viewType === 'hotel' ? [
-                                    { icon: <CheckCircleOutlined />, text: 'Wifi miễn phí' },
-                                    { icon: <CheckCircleOutlined />, text: 'Hồ bơi' },
-                                    { icon: <CheckCircleOutlined />, text: 'Ăn sáng' },
-                                    { icon: <CheckCircleOutlined />, text: 'Spa & Gym' }
-                                ].map((item, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 text-slate-800 font-bold text-[10px] uppercase tracking-widest bg-slate-50 p-3 rounded-xl">
-                                        <span className="text-blue-600">{item.icon}</span> {item.text}
+                                {/* Thumbnail strip */}
+                                <div className="absolute top-4 right-4 flex gap-2">
+                                    {[1, 2, 3].map(i => (
+                                        <div key={i} className="w-16 h-12 rounded-xl overflow-hidden border-2 border-white/80 shadow-lg cursor-pointer hover:border-white transition-all hover:scale-105 [&>.ant-image]:w-full [&>.ant-image]:h-full [&_img]:object-cover [&_img]:w-full [&_img]:h-full">
+                                            <Image
+                                                src={`https://picsum.photos/seed/${detailType}-${detailItem.id}-${i}/800/500`}
+                                                alt=""
+                                                preview={{ mask: false }}
+                                            />
+                                        </div>
+                                    ))}
+                                    {/* Hidden extra gallery images */}
+                                    <div style={{ display: 'none' }}>
+                                        {[4, 5, 6, 7].map(i => (
+                                            <Image
+                                                key={i}
+                                                src={`https://picsum.photos/seed/${detailType}-${detailItem.id}-${i}/1200/800`}
+                                            />
+                                        ))}
                                     </div>
-                                )) : [
-                                    { icon: <CheckCircleOutlined />, text: 'Hành lý 20kg' },
-                                    { icon: <CheckCircleOutlined />, text: 'Suất ăn' },
-                                    { icon: <CheckCircleOutlined />, text: 'Ghế rộng' },
-                                    { icon: <CheckCircleOutlined />, text: 'Giải trí' }
-                                ].map((item, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 text-slate-800 font-bold text-[10px] uppercase tracking-widest bg-slate-50 p-3 rounded-xl">
-                                        <span className="text-blue-600">{item.icon}</span> {item.text}
+                                </div>
+                            </Image.PreviewGroup>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 md:p-8 space-y-5">
+                            {/* Description */}
+                            <p className="text-slate-500 text-sm leading-relaxed font-light">
+                                {detailItem.description || (detailType === 'hotel'
+                                    ? 'Khách sạn đẳng cấp với không gian sang trọng, hiện đại và dịch vụ chuyên nghiệp. Vị trí thuận tiện, gần các điểm tham quan nổi tiếng.'
+                                    : 'Chuyến bay chất lượng cao với đội ngũ phi hành đoàn chuyên nghiệp. Hành lý, bữa ăn và giải trí trên chuyến bay đều được bố trí kỹ lưỡng.'
+                                )}
+                            </p>
+
+                            {/* Amenities */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {(detailType === 'hotel' ? [
+                                    { icon: '📶', text: 'Wifi miễn phí' },
+                                    { icon: '🏊', text: 'Hồ bơi' },
+                                    { icon: '🍳', text: 'Ăn sáng' },
+                                    { icon: '💆', text: 'Spa & Gym' },
+                                    { icon: '🅿️', text: 'Bãi đỗ xe' },
+                                    { icon: '🛎️', text: 'Lễ tân 24/7' },
+                                    { icon: '❄️', text: 'Điều hòa' },
+                                    { icon: '🛁', text: 'Bồn tắm' },
+                                ] : [
+                                    { icon: '🧳', text: 'Hành lý 20kg' },
+                                    { icon: '🍱', text: 'Suất ăn' },
+                                    { icon: '💺', text: 'Ghế rộng' },
+                                    { icon: '🎬', text: 'Giải trí' },
+                                    { icon: '⚡', text: 'Sạc điện' },
+                                    { icon: '📶', text: 'Wifi' },
+                                    { icon: '✅', text: 'Đúng giờ' },
+                                    { icon: '🏷️', text: 'Thuế phí' },
+                                ]).map((a, i) => (
+                                    <div key={i} className="flex items-center gap-2 text-slate-700 text-xs font-semibold bg-slate-50 px-3 py-2 rounded-xl">
+                                        <span>{a.icon}</span> {a.text}
                                     </div>
                                 ))}
                             </div>
 
-                            <button 
-                                onClick={() => { setViewingProduct(null); setViewType(null); }}
-                                className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl"
-                            >
-                                Quay lại Tour
-                            </button>
+                            {/* Price breakdown */}
+                            <div className="bg-blue-50 rounded-2xl p-4 space-y-2">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Chi phí thêm vào tour</p>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-slate-600">{detailType === 'hotel' ? 'Khách sạn' : 'Vé máy bay'}</span>
+                                    <span className="font-black text-blue-600 text-lg">+{formatCurrency(detailItem.price || 0)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs text-slate-400 border-t border-blue-100 pt-2">
+                                    <span>Giá tour cơ bản</span>
+                                    <span>{formatCurrency(tour.price || 0)}</span>
+                                </div>
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => { setDetailItem(null); setDetailType(null); }}
+                                    className="flex-1 py-3 border-2 border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:border-slate-300 transition-all"
+                                >
+                                    Đóng
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (detailType === 'hotel') setSelectedHotelId(detailItem.id);
+                                        else setSelectedFlightId(detailItem.id);
+                                        setDetailItem(null); setDetailType(null);
+                                    }}
+                                    className="flex-[2] py-3 bg-blue-600 text-white rounded-xl font-black text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
+                                >
+                                    ✓ Chọn {detailType === 'hotel' ? 'khách sạn' : 'chuyến bay'} này
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
             </Modal>
             {/* ── FINAL BOOKING SECTION ── */}
-            <div className="bg-slate-900 rounded-[2rem] p-8 md:p-12 mb-16 relative overflow-hidden shadow-2xl group">
+            <div className="bg-slate-900 rounded-[2rem] p-8 md:p-12 mb-16 relative overflow-hidden shadow-2xl">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl -mr-20 -mt-20" />
                 <div className="absolute bottom-0 left-0 w-40 h-40 bg-amber-500/10 rounded-full blur-2xl -ml-10 -mb-10" />
-                
+
                 <Row align="middle" justify="space-between" gutter={[32, 32]} className="relative z-10">
-                    <Col xs={24} lg={16}>
+                    <Col xs={24} lg={14}>
                         <div className="space-y-4">
                             <Tag color="gold" className="rounded-full border-none px-4 py-1.5 font-black uppercase text-[10px] tracking-[0.2em] bg-amber-500 text-slate-900">Combo Trọn Gói</Tag>
-                            <h3 className="text-3xl md:text-4xl font-black text-white tracking-tight">Trải nghiệm kỳ nghỉ <span className="text-amber-500">đẳng cấp</span></h3>
-                            <p className="text-slate-400 text-sm max-w-xl font-light leading-relaxed">
-                                Giá đã bao gồm đầy đủ Tour du lịch, Vé máy bay khứ hồi và Khách sạn cao cấp tại {tour.location}. Không phát sinh chi phí.
-                            </p>
+                            <h3 className="text-2xl md:text-3xl font-black text-white tracking-tight">Tổng chi phí hành trình <span className="text-amber-500">của bạn</span></h3>
+                            {/* Price breakdown */}
+                            <div className="space-y-2 mt-4">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-400">🗺️ Tour {tour.name}</span>
+                                    <span className="text-white font-bold">{formatCurrency(tour.price || 0)}</span>
+                                </div>
+                                {selectedHotel && (
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-400">🏨 {selectedHotel.name}</span>
+                                        <span className="text-white font-bold">+{formatCurrency(selectedHotel.price || 0)}</span>
+                                    </div>
+                                )}
+                                {selectedFlight && (
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-400">✈️ {selectedFlight.name}</span>
+                                        <span className="text-white font-bold">+{formatCurrency(selectedFlight.price || 0)}</span>
+                                    </div>
+                                )}
+                                <div className="border-t border-slate-700 pt-2 flex justify-between items-center">
+                                    <span className="text-slate-300 text-xs font-bold uppercase tracking-widest">Tổng cộng / khách</span>
+                                    <span className="text-amber-400 font-black text-lg">{formatCurrency(totalPrice)}</span>
+                                </div>
+                            </div>
                         </div>
                     </Col>
-                    <Col xs={24} lg={8} className="text-center lg:text-right">
-                        <div className="flex flex-col gap-6 items-center lg:items-end">
+                    <Col xs={24} lg={10} className="text-center lg:text-right">
+                        <div className="flex flex-col gap-4 items-center lg:items-end">
                             <div className="text-right">
-                                <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest block mb-2">Giá trọn gói mỗi khách</span>
-                                <span className="text-5xl font-black text-white leading-none tracking-tighter">{formatCurrency(tour.price || 0)}</span>
+                                <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest block mb-1">Giá trọn gói mỗi khách</span>
+                                <span className="text-4xl md:text-5xl font-black text-white leading-none tracking-tighter transition-all duration-500">{formatCurrency(totalPrice)}</span>
                             </div>
                             <Button
                                 type="primary"
                                 size="large"
-                                className="h-16 px-12 rounded-2xl font-black text-sm uppercase tracking-widest bg-blue-600 hover:bg-blue-700 border-none transition-all hover:scale-105 shadow-xl hover:shadow-blue-600/20 w-full"
+                                className="h-14 px-10 rounded-2xl font-black text-sm uppercase tracking-widest bg-blue-600 hover:bg-blue-700 border-none transition-all hover:scale-105 shadow-xl w-full"
                                 onClick={handleBooking}
                             >
                                 Đặt ngay hành trình

@@ -37,7 +37,7 @@ function OrderContent() {
 
             // Fetch Vouchers
             fetch(`/api/vouchers/available`)
-                .then(res => res.json())
+                .then(res => res.ok ? res.json() : Promise.resolve([]))
                 .then(data => {
                     if (Array.isArray(data)) setVouchers(data);
                 })
@@ -62,7 +62,8 @@ function OrderContent() {
                     serviceType: type
                 })
             });
-            const data = await res.json();
+            let data: any = {};
+            try { data = await res.json(); } catch { /* non-JSON */ }
             if (data.valid) {
                 setDiscountAmount(data.discountAmount);
                 message.success(`Đã áp dụng mã: giảm ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(data.discountAmount)}`);
@@ -100,7 +101,10 @@ function OrderContent() {
         else if (type === 'FLIGHT') endpoint = `/api/flights/${id}`;
 
         fetch(endpoint)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
             .then(data => {
                 setItem(data);
                 
@@ -108,16 +112,18 @@ function OrderContent() {
                 const promises = [];
                 
                 if (type === 'TOUR' && hotelId) {
-                    promises.push(fetch(`/api/hotels/${hotelId}`).then(res => res.json()).then(h => {
-                        setSelectedHotel(h);
-                        initialPrice += h.price || 0;
-                    }));
+                    promises.push(
+                        fetch(`/api/hotels/${hotelId}`)
+                            .then(res => res.ok ? res.json() : Promise.resolve({}))
+                            .then(h => { setSelectedHotel(h); initialPrice += h.price || 0; })
+                    );
                 }
                 if (type === 'TOUR' && flightId) {
-                    promises.push(fetch(`/api/flights/${flightId}`).then(res => res.json()).then(f => {
-                        setSelectedFlight(f);
-                        initialPrice += f.price || 0;
-                    }));
+                    promises.push(
+                        fetch(`/api/flights/${flightId}`)
+                            .then(res => res.ok ? res.json() : Promise.resolve({}))
+                            .then(f => { setSelectedFlight(f); initialPrice += f.price || 0; })
+                    );
                 }
                 
                 Promise.all(promises).then(() => {
@@ -308,6 +314,7 @@ function OrderContent() {
                         }));
                     });
                 }
+            } else if (type === 'TOUR') {
                 // Tour
                 const startDate = values.startDate;
                 
@@ -392,7 +399,7 @@ function OrderContent() {
                                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                 <span>{v.code}</span>
                                                 <span style={{ color: 'green' }}>
-                                                    {v.type === 'PERCENT' ? `-${v.value}%` : `-${v.value / 1000}k`}
+                                                    {v.type === 'PERCENT' ? `-${v.value}% ${v.maxDiscount ? `(Tối đa ${v.maxDiscount / 1000}k)` : ''}` : `-${v.value / 1000}k`}
                                                 </span>
                                             </div>
                                             <div style={{ fontSize: '0.8em', color: '#888' }}>

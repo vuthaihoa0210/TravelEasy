@@ -6,20 +6,83 @@ html { scroll-behavior: smooth; }
   --foreground: #0f172a;
   --primary: #2563eb;
   --primary-foreground: #ffffff;
+  --card-bg: #ffffff;
+  --card-border: #f1f5f9;
+  --text-muted: #64748b;
+  --section-bg: #f1f5f9;
+  --input-bg: #f8fafc;
+  --nav-text: rgba(255,255,255,0.7);
 }
+
+/* Dark mode via data-theme attribute */
+[data-theme="dark"] {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --card-bg: #1e293b;
+  --card-border: #334155;
+  --text-muted: #94a3b8;
+  --section-bg: #1e293b;
+  --input-bg: #1e293b;
+  --nav-text: rgba(255,255,255,0.85);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --background: #0f172a;
+    --foreground: #f1f5f9;
+    --card-bg: #1e293b;
+    --card-border: #334155;
+    --text-muted: #94a3b8;
+    --section-bg: #1e293b;
+    --input-bg: #1e293b;
+  }
+}
+
+/* Dark mode overrides for common Tailwind classes */
+[data-theme="dark"] body {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .bg-white {
+  background-color: var(--card-bg) !important;
+}
+
+[data-theme="dark"] .bg-slate-50 {
+  background-color: #0f172a !important;
+}
+
+[data-theme="dark"] .text-slate-900 {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .text-slate-800 {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .border-slate-100,
+[data-theme="dark"] .border-slate-200 {
+  border-color: var(--card-border) !important;
+}
+
+[data-theme="dark"] .shadow-sm,
+[data-theme="dark"] .shadow-xl {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15) !important;
+}
+
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f8fafc;
-  }
 }
 
 body {

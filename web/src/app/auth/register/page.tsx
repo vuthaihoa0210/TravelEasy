@@ -28,7 +28,8 @@ export default function Register() {
         body: JSON.stringify({ email }),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      try { data = await res.json(); } catch { /* server returned non-JSON */ }
       setLoading(false);
 
       if (res.ok) {
@@ -61,7 +62,8 @@ export default function Register() {
         }),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      try { data = await res.json(); } catch { /* server returned non-JSON */ }
       setLoading(false);
 
       if (res.ok) {

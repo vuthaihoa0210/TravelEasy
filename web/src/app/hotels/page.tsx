@@ -24,8 +24,12 @@ const formatCurrency = (amount: number) => {
 
 const removeAccents = (str: string) => {
   if (!str) return '';
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').replace(/\u0110/g, 'D').toLowerCase();
 };
+
+function getHotelCardImage(id: string | number): string {
+  return `https://picsum.photos/seed/hotel-${id}/600/400`;
+}
 
 function HotelsContent() {
   const router = useRouter();
@@ -194,7 +198,7 @@ function HotelsContent() {
                     className="group bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-700 cursor-pointer flex flex-col h-full hover:-translate-y-2"
                   >
                     <div className="relative h-52 overflow-hidden">
-                       <img src={h.image} alt={h.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                       <img src={getHotelCardImage(h.id)} alt={h.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                        <div className="absolute top-4 left-4">
                          <div className="px-2 py-0.5 bg-white/90 backdrop-blur-md text-blue-600 rounded-full font-bold uppercase text-[8px] tracking-widest shadow-lg">
                            {h.category === 'INTERNATIONAL' ? 'Quốc tế' : 'Trong nước'}

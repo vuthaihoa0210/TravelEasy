@@ -30,8 +30,11 @@ export default function AdminFlightsPage() {
         setLoading(true);
         try {
             const res = await fetch('/api/flights');
-            const data = await res.json();
-            setFlights(data);
+            if (res.ok) {
+                let data: any = [];
+                try { data = await res.json(); } catch { /* non-JSON */ }
+                setFlights(data);
+            }
         } catch (error) {
             message.error('Lỗi tải dữ liệu');
         }

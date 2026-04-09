@@ -148,7 +148,24 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
             where: { userId: Number(userId) },
             orderBy: { createdAt: 'desc' }
         });
-        res.json(bookings);
+
+        const enrichedBookings = await Promise.all(bookings.map(async (b: any) => {
+            const bookingObj = JSON.parse(JSON.stringify(b));
+            console.log(`Booking ${b.id}: flightId=${b.flightId} (type=${typeof b.flightId}), hotelId=${b.hotelId} (type=${typeof b.hotelId})`);
+            if (b.flightId) {
+                const flight = await prisma.flight.findUnique({ where: { id: Number(b.flightId) } });
+                console.log(`  -> flight lookup for ${Number(b.flightId)}:`, flight ? flight.name : 'null');
+                bookingObj.flight = flight ? JSON.parse(JSON.stringify(flight)) : null;
+            }
+            if (b.hotelId) {
+                const hotel = await prisma.hotel.findUnique({ where: { id: Number(b.hotelId) } });
+                console.log(`  -> hotel lookup for ${Number(b.hotelId)}:`, hotel ? hotel.name : 'null');
+                bookingObj.hotel = hotel ? JSON.parse(JSON.stringify(hotel)) : null;
+            }
+            return bookingObj;
+        }));
+
+        res.json(enrichedBookings);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch bookings' });
     }
@@ -161,7 +178,15 @@ router.get('/', async (req: Request, res: Response) => {
             orderBy: { createdAt: 'desc' },
             include: { user: { select: { name: true, email: true } } } // Optional: include user info
         });
-        res.json(bookings);
+
+        const enrichedBookings = await Promise.all(bookings.map(async (b: any) => {
+            const bookingObj = JSON.parse(JSON.stringify(b));
+            if (b.flightId) bookingObj.flight = await prisma.flight.findUnique({ where: { id: b.flightId } }).then(f => f ? JSON.parse(JSON.stringify(f)) : null);
+            if (b.hotelId) bookingObj.hotel = await prisma.hotel.findUnique({ where: { id: b.hotelId } }).then(h => h ? JSON.parse(JSON.stringify(h)) : null);
+            return bookingObj;
+        }));
+
+        res.json(enrichedBookings);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch bookings' });
     }

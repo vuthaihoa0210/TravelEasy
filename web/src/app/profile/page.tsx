@@ -32,6 +32,8 @@ interface Booking {
   startDate?: string;
   endDate?: string;
   subBookings?: Booking[];
+  flight?: any;
+  hotel?: any;
 }
 
 
@@ -312,6 +314,21 @@ export default function ProfilePage() {
                 {selectedBooking.customerPhone || 'Chưa cập nhật'}
               </Descriptions.Item>
             </Descriptions>
+
+            {selectedBooking.type === 'TOUR' && (selectedBooking.flight || selectedBooking.hotel) && (
+              <Descriptions column={1} bordered size="small" style={{ marginTop: 16 }} title={<Text strong style={{ fontSize: 14 }}>Dịch vụ kèm theo</Text>}>
+                {selectedBooking.flight && (
+                  <Descriptions.Item label="✈️ Máy bay">
+                    <Text strong>{selectedBooking.flight.name}</Text>
+                  </Descriptions.Item>
+                )}
+                {selectedBooking.hotel && (
+                  <Descriptions.Item label="🏨 Khách sạn">
+                    <Text strong>{selectedBooking.hotel.name}</Text>
+                  </Descriptions.Item>
+                )}
+              </Descriptions>
+            )}
 
             {selectedBooking.subBookings && selectedBooking.subBookings.map((sub, index) => (
                <Descriptions key={sub.id} column={1} bordered size="small" style={{ marginTop: 16 }} title={<Text strong style={{ fontSize: 14 }}>Chi tiết #{index + 1}: {sub.itemName}</Text>}>

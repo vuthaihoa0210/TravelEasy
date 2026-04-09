@@ -9,40 +9,50 @@ interface ImageGalleryProps {
   altText?: string;
 }
 
-// Deterministic image pool selection based on product ID
-function getGalleryImages(mainImage: string, productId: string | number, category: 'hotel' | 'tour' | 'flight'): string[] {
-  const id = Number(productId) || 1;
-
-  const pools: Record<string, { prefix: string; count: number }> = {
-    hotel: { prefix: '/images/imghotel', count: 40 },
-    tour: { prefix: '/images/imgtour', count: 40 },
-    flight: { prefix: '/images/imgflight', count: 5 },
-  };
-
-  const { prefix, count } = pools[category];
-
-  // Pick 7 unique indices deterministically from product ID
-  const targetCount = Math.min(count, 7);
-  const indices: number[] = [];
-  let seed = id;
-  while (indices.length < targetCount) {
-    seed = (seed * 1103515245 + 12345) % 1000000;
-    const idx = (Math.abs(seed) % count) + 1;
-    if (!indices.includes(idx)) indices.push(idx);
+/**
+ * Returns a list of image URLs for the gallery.
+ * Tours & Hotels: picsum.photos with seed = "{category}-{productId}-{slot}"
+ *   → deterministic, unique per product per slot, no API key needed.
+ * Flights: local files (unchanged).
+ */
+function getGalleryImages(
+  mainImage: string,
+  productId: string | number,
+  category: 'hotel' | 'tour' | 'flight',
+  count = 8
+): string[] {
+  // Flights keep local images
+  if (category === 'flight') {
+    const id = Number(productId) || 1;
+    const indices: number[] = [];
+    let seed = id;
+    while (indices.length < Math.min(5, count)) {
+      seed = (seed * 1103515245 + 12345) % 1000000;
+      const idx = (Math.abs(seed) % 5) + 1;
+      if (!indices.includes(idx)) indices.push(idx);
+    }
+    const extras = indices.map((i) => `/images/imgflight${i}.jpg`);
+    const all = [mainImage, ...extras.filter((img) => img !== mainImage)];
+    return all.slice(0, count);
   }
 
-  const extras = indices.map(i => `${prefix}${i}.jpg`);
-  // Ensure main image is first, remove duplicates
-  const allImages = [mainImage, ...extras.filter(img => img !== mainImage)];
-  return allImages.slice(0, 8);
+  // Tours & Hotels: picsum.photos deterministic by seed string
+  const images: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const seedStr = `${category}-${productId}-${i}`;
+    const w = i === 0 ? 800 : 400;
+    const h = i === 0 ? 500 : 300;
+    images.push(`https://picsum.photos/seed/${seedStr}/${w}/${h}`);
+  }
+
+  return images;
 }
 
 export default function ImageGallery({ mainImage, productId, category, altText = '' }: ImageGalleryProps) {
-  const images = getGalleryImages(mainImage, productId, category);
+  const images = getGalleryImages(mainImage, productId, category, 8);
 
   return (
     <div>
-      {/* Main large image */}
       <Image.PreviewGroup>
         {/* Hero image */}
         <div style={{ marginBottom: 8 }}>
@@ -61,11 +71,13 @@ export default function ImageGallery({ mainImage, productId, category, altText =
         </div>
 
         {/* Thumbnail grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 8,
-        }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 8,
+          }}
+        >
           {images.slice(1).map((img, idx) => (
             <div key={idx} style={{ position: 'relative' }}>
               <Image
@@ -79,9 +91,10 @@ export default function ImageGallery({ mainImage, productId, category, altText =
                   cursor: 'pointer',
                 }}
                 preview={{
-                  cover: idx === images.length - 2 ? (
-                    <span style={{ fontSize: 12, fontWeight: 600 }}>Xem tất cả</span>
-                  ) : undefined,
+                  cover:
+                    idx === images.length - 2 ? (
+                      <span style={{ fontSize: 12, fontWeight: 600 }}>Xem tất cả</span>
+                    ) : undefined,
                 }}
               />
             </div>

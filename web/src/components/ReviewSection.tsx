@@ -39,7 +39,8 @@ export default function ReviewSection({ type, itemId }: ReviewSectionProps) {
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}`}/api/reviews/${type}/${itemId}`);
             if (res.ok) {
-                const data = await res.json();
+                let data: any = [];
+                try { data = await res.json(); } catch { /* non-JSON */ }
                 setReviews(data);
             }
         } catch (error) {
@@ -71,13 +72,15 @@ export default function ReviewSection({ type, itemId }: ReviewSectionProps) {
             });
 
             if (res.ok) {
-                const newReview = await res.json();
+                let newReview: any = {};
+                try { newReview = await res.json(); } catch { /* non-JSON */ }
                 setReviews([newReview, ...reviews]);
                 setComment('');
                 setRating(5);
             } else {
-                const errorData = await res.json();
-                alert(`Lỗi: ${errorData.error}${errorData.details ? `\nChi tiết: ${errorData.details}` : ''}\n\n${errorData.code === 'P2003' ? 'Có vẻ như tài khoản của bạn không còn tồn tại trong hệ thống. Vui lòng đăng xuất và đăng nhập lại!' : ''}`);
+                let errorData: any = {};
+                try { errorData = await res.json(); } catch { /* non-JSON */ }
+                alert(`Lỗi: ${errorData.error || 'Có lỗi xảy ra'}${errorData.details ? `\nChi tiết: ${errorData.details}` : ''}\n\n${errorData.code === 'P2003' ? 'Có vẻ như tài khoản của bạn không còn tồn tại trong hệ thống. Vui lòng đăng xuất và đăng nhập lại!' : ''}`);
             }
         } catch (error) {
             console.error('Submit review error:', error);
@@ -108,7 +111,8 @@ export default function ReviewSection({ type, itemId }: ReviewSectionProps) {
             });
 
             if (res.ok) {
-                const newReply = await res.json();
+                let newReply: any = {};
+                try { newReply = await res.json(); } catch { /* non-JSON */ }
                 setReviews(reviews.map(r => r.id === parentId ? { ...r, replies: [...(r.replies || []), newReply] } : r));
                 setReplyComment('');
                 setReplyingTo(null);

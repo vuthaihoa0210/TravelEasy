@@ -29,8 +29,11 @@ export default function AdminBlogsPage() {
         setLoading(true);
         try {
             const res = await fetch('/api/blogs');
-            const data = await res.json();
-            setBlogs(Array.isArray(data) ? data : []);
+            if (res.ok) {
+                let data: any = [];
+                try { data = await res.json(); } catch { /* non-JSON */ }
+                setBlogs(Array.isArray(data) ? data : []);
+            }
         } catch (error) {
             message.error('Lỗi tải dữ liệu');
         }

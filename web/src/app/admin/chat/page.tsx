@@ -60,8 +60,11 @@ export default function AdminChatPage() {
     setLoading(true);
     try {
       const res = await fetch(`${BACKEND}/api/chat/rooms`);
-      const data = await res.json();
-      setRooms(Array.isArray(data) ? data : []);
+      if (res.ok) {
+        let data: any = [];
+        try { data = await res.json(); } catch { /* non-JSON */ }
+        setRooms(Array.isArray(data) ? data : []);
+      }
     } catch { message.error('Lỗi tải danh sách chat'); }
     setLoading(false);
   };
@@ -128,8 +131,11 @@ export default function AdminChatPage() {
     // Load messages
     try {
       const res = await fetch(`${BACKEND}/api/chat/rooms/${room.id}/messages`);
-      const data = await res.json();
-      setMessages(Array.isArray(data) ? data : []);
+      if (res.ok) {
+        let data: any = [];
+        try { data = await res.json(); } catch { /* non-JSON */ }
+        setMessages(Array.isArray(data) ? data : []);
+      }
     } catch { message.error('Lỗi tải tin nhắn'); }
   };
 

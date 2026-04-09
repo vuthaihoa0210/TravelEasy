@@ -30,8 +30,11 @@ export default function AdminToursPage() {
         setLoading(true);
         try {
             const res = await fetch('/api/tours');
-            const data = await res.json();
-            setTours(data);
+            if (res.ok) {
+                let data: any = [];
+                try { data = await res.json(); } catch { /* non-JSON */ }
+                setTours(data);
+            }
         } catch (error) {
             message.error('Lỗi tải dữ liệu');
         }

@@ -19,7 +19,8 @@ export default function ForgotPassword() {
                 body: JSON.stringify(values),
             });
 
-            const data = await res.json();
+            let data: any = {};
+            try { data = await res.json(); } catch { /* server returned non-JSON */ }
 
             if (res.ok) {
                 message.success(data.message);
