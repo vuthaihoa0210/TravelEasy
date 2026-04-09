@@ -195,3 +195,14 @@ input[type="reset"],
   max-width: 1200px;
   margin: 0 auto;
 }
+
+/* ===== ANTD MODAL FIX =====
+   Force modal mask & wrap to always appear above the fixed navbar (z-50 = 50)
+   and above antd Layout stacking contexts on admin pages.
+   =============================== */
+.ant-modal-mask {
+  z-index: 9998 !important;
+}
+.ant-modal-wrap {
+  z-index: 9999 !important;
+}

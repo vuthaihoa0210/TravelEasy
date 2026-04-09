@@ -38,18 +38,41 @@ router.post('/', async (req: Request, res: Response) => {
                 await prisma.hotel.update({ where: { id: hotel.id }, data: { availableSingle: { decrement: qty } } });
             }
         } else if (type === 'TOUR') {
+            // Tour Combo: trừ kho theo số phòng và số ghế được chọn riêng biệt
+            const singleRooms = Number(req.body.singleRooms) || 0;
+            const doubleRooms = Number(req.body.doubleRooms) || 0;
+            const economySeats = Number(req.body.economySeats) || 0;
+            const businessSeats = Number(req.body.businessSeats) || 0;
+
             if (flightId) {
                 const flight = await prisma.flight.findUnique({ where: { id: Number(flightId) }});
                 if (flight) {
-                    if (flight.availableEconomy < qty) return res.status(400).json({ error: `Vé máy bay kèm theo hiện chỉ còn ${flight.availableEconomy} chỗ.` });
-                    await prisma.flight.update({ where: { id: flight.id }, data: { availableEconomy: { decrement: qty } } });
+                    // Khứ hồi: kiểm tra đủ chỗ cho cả 2 chiều
+                    if (economySeats > 0 && flight.availableEconomy < economySeats) {
+                        return res.status(400).json({ error: `Vé phổ thông khứ hồi kèm theo hiện chỉ còn ${flight.availableEconomy} chỗ.` });
+                    }
+                    if (businessSeats > 0 && flight.availableBusiness < businessSeats) {
+                        return res.status(400).json({ error: `Vé thương gia khứ hồi kèm theo hiện chỉ còn ${flight.availableBusiness} chỗ.` });
+                    }
+                    await prisma.flight.update({ where: { id: flight.id }, data: {
+                        availableEconomy: { decrement: economySeats },
+                        availableBusiness: { decrement: businessSeats },
+                    }});
                 }
             }
             if (hotelId) {
                 const hotel = await prisma.hotel.findUnique({ where: { id: Number(hotelId) }});
                 if (hotel) {
-                    if (hotel.availableSingle < qty) return res.status(400).json({ error: `Khách sạn kèm theo hiện chỉ còn ${hotel.availableSingle} phòng.` });
-                    await prisma.hotel.update({ where: { id: hotel.id }, data: { availableSingle: { decrement: qty } } });
+                    if (singleRooms > 0 && hotel.availableSingle < singleRooms) {
+                        return res.status(400).json({ error: `Phòng đơn kèm theo hiện chỉ còn ${hotel.availableSingle} phòng.` });
+                    }
+                    if (doubleRooms > 0 && hotel.availableDouble < doubleRooms) {
+                        return res.status(400).json({ error: `Phòng đôi kèm theo hiện chỉ còn ${hotel.availableDouble} phòng.` });
+                    }
+                    await prisma.hotel.update({ where: { id: hotel.id }, data: {
+                        availableSingle: { decrement: singleRooms },
+                        availableDouble: { decrement: doubleRooms },
+                    }});
                 }
             }
         }
@@ -130,6 +153,10 @@ router.post('/', async (req: Request, res: Response) => {
                 voucherCode,
                 discountAmount,
                 finalPrice,
+                singleRooms: type === 'TOUR' ? (Number(req.body.singleRooms) || 0) : null,
+                doubleRooms: type === 'TOUR' ? (Number(req.body.doubleRooms) || 0) : null,
+                economySeats: type === 'TOUR' ? (Number(req.body.economySeats) || 0) : null,
+                businessSeats: type === 'TOUR' ? (Number(req.body.businessSeats) || 0) : null,
                 status: 'PENDING'
             }
         });

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Select, Typography, message, Spin, Divider, Space, Radio, Result } from 'antd';
+import { Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Select, Typography, message, Spin, Divider, Space, Radio, Result, Tag } from 'antd';
 import { MinusCircleOutlined, PlusOutlined, LockOutlined } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -29,10 +29,17 @@ function OrderContent() {
     const [discountAmount, setDiscountAmount] = useState(0);
     const [selectedVoucherCode, setSelectedVoucherCode] = useState<string | null>(null);
 
+    // Tour Combo inventory state
+    const [tourSingleRooms, setTourSingleRooms] = useState(1);
+    const [tourDoubleRooms, setTourDoubleRooms] = useState(0);
+    const [tourEconomySeats, setTourEconomySeats] = useState(1);
+    const [tourBusinessSeats, setTourBusinessSeats] = useState(0);
+
     useEffect(() => {
         if (!loading && session?.user) {
             form.setFieldsValue({
                 customerName: session.user.name,
+                totalPeople: 1
             });
 
             // Fetch Vouchers
@@ -138,23 +145,15 @@ function OrderContent() {
             });
     }, [type, id, router]);
 
+
+
     useEffect(() => {
         if (status === 'unauthenticated') {
             router.push('/auth/signin');
         }
     }, [status, router]);
 
-    if (status === 'loading' || (loading && status === 'authenticated') || status === 'unauthenticated') {
-        return (
-            <div style={{ padding: '100px', textAlign: 'center' }}>
-                <Spin size="large" tip="Đang tải thông tin...">
-                    <div style={{ height: 50 }} />
-                </Spin>
-            </div>
-        );
-    }
-
-    const handleValuesChange = (changedValues: any, allValues: any) => {
+    const handleValuesChange = useCallback((changedValues: any, allValues: any) => {
         if (!item) return;
 
         let price = item.price || 0;
@@ -204,12 +203,22 @@ function OrderContent() {
             }
 
         } else {
-            // Tour Logic: Single date, return is +3 days
+            // Tour Logic: giá tour x đầu người + giá phòng x số phòng + vé máy bay khứ hồi x2
             let quantity = allValues.totalPeople || 1;
-            let basePrice = item.price || 0;
-            if (selectedHotel) basePrice += selectedHotel.price || 0;
-            if (selectedFlight) basePrice += selectedFlight.price || 0;
-            grandTotal = basePrice * quantity;
+            let tourBase = (item.price || 0) * quantity;
+            let hotelCost = 0;
+            let flightCost = 0;
+
+            if (selectedHotel) {
+                hotelCost = (selectedHotel.price || 0) * tourSingleRooms
+                          + (selectedHotel.price || 0) * 1.5 * tourDoubleRooms;
+            }
+            if (selectedFlight) {
+                // Khứ hồi x2
+                flightCost = (selectedFlight.price || 0) * 2 * tourEconomySeats
+                           + (selectedFlight.price || 0) * 2 * 1.5 * tourBusinessSeats;
+            }
+            grandTotal = tourBase + hotelCost + flightCost;
         }
 
         setTotalPrice(grandTotal);
@@ -217,7 +226,24 @@ function OrderContent() {
         if (changedValues.tripType) {
             setTripType(changedValues.tripType);
         }
-    };
+    }, [item, type, selectedHotel, selectedFlight, tourSingleRooms, tourDoubleRooms, tourEconomySeats, tourBusinessSeats]);
+
+    // Recalculate price when tour selections change
+    useEffect(() => {
+        if (type === 'TOUR' && item && !loading) {
+            handleValuesChange({}, form.getFieldsValue());
+        }
+    }, [tourSingleRooms, tourDoubleRooms, tourEconomySeats, tourBusinessSeats, item, type, loading, handleValuesChange, form]);
+
+    if (status === 'loading' || (loading && status === 'authenticated') || status === 'unauthenticated') {
+        return (
+            <div style={{ padding: '100px', textAlign: 'center' }}>
+                <Spin size="large" tip="Đang tải thông tin...">
+                    <div style={{ height: 50 }} />
+                </Spin>
+            </div>
+        );
+    }
 
     const handleSubmit = async (values: any) => {
         if (!session) {
@@ -319,7 +345,7 @@ function OrderContent() {
                 const startDate = values.startDate;
                 
                 // Parse nights from duration
-                const nightsMatch = item?.duration?.match(/(\d+)Đ/);
+                const nightsMatch = item?.duration?.match(/(\d+)\u0110/);
                 const nights = nightsMatch ? parseInt(nightsMatch[1]) : 2;
                 const endDate = dayjs(startDate).add(nights, 'day'); 
 
@@ -334,6 +360,11 @@ function OrderContent() {
                         totalPeople: values.totalPeople,
                         hotelId: selectedHotel ? selectedHotel.id : null,
                         flightId: selectedFlight ? selectedFlight.id : null,
+                        // Tour Combo inventory
+                        singleRooms: tourSingleRooms,
+                        doubleRooms: tourDoubleRooms,
+                        economySeats: tourEconomySeats,
+                        businessSeats: tourBusinessSeats,
                     }),
                 }));
             }
@@ -676,7 +707,7 @@ function OrderContent() {
                                             disabledDate={(current) => current && current < dayjs().endOf('day')}
                                             onChange={(date) => {
                                                 if (date && item?.duration) {
-                                                    const nightsMatch = item.duration.match(/(\d+)Đ/);
+                                                    const nightsMatch = item.duration.match(/(\d+)\u0110/);
                                                     const nights = nightsMatch ? parseInt(nightsMatch[1]) : 2;
                                                     const returnDay = dayjs(date).add(nights, 'day');
                                                     form.setFieldsValue({ returnDate: returnDay.format('DD/MM/YYYY') });
@@ -693,6 +724,118 @@ function OrderContent() {
                                     <Form.Item name="totalPeople" label="Số lượng khách" rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}>
                                         <InputNumber min={1} max={50} style={{ width: '100%' }} />
                                     </Form.Item>
+
+                                    {/* Hotel room selection */}
+                                    {selectedHotel && (
+                                        <>
+                                            <Divider titlePlacement="left" styles={{ content: { margin: 0 } }}>
+                                                🏨 Phòng Khách sạn: {selectedHotel.name}
+                                            </Divider>
+                                            <Row gutter={[16, 16]} style={{ display: 'flex', alignItems: 'stretch' }}>
+                                                <Col span={12} style={{ display: 'flex' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', flex: 1 }}>
+                                                        <div style={{ marginBottom: 16 }}>
+                                                            <div style={{ fontWeight: 'bold', fontSize: 16 }}>Phòng Đơn</div>
+                                                            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Còn: {selectedHotel.availableSingle} | Giá: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(selectedHotel.price || 0)}</div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                            <Text type="secondary" style={{ fontSize: 12 }}>Số lượng:</Text>
+                                                            <InputNumber
+                                                                min={0} max={selectedHotel.availableSingle}
+                                                                value={tourSingleRooms}
+                                                                onChange={v => setTourSingleRooms(v || 0)}
+                                                                placeholder="0"
+                                                                style={{ width: 80 }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #e2e8f0' }}>
+                                                            <Text type="secondary" style={{ fontSize: 11 }}>Thành tiền:</Text>
+                                                            <div style={{ fontWeight: '600', color: '#1e293b' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format((selectedHotel.price || 0) * tourSingleRooms)}</div>
+                                                        </div>
+                                                    </div>
+                                                </Col>
+                                                <Col span={12} style={{ display: 'flex' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', flex: 1 }}>
+                                                        <div style={{ marginBottom: 16 }}>
+                                                            <div style={{ fontWeight: 'bold', fontSize: 16 }}>Phòng Đôi</div>
+                                                            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Còn: {selectedHotel.availableDouble} | Giá: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format((selectedHotel.price || 0) * 1.5)}</div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                            <Text type="secondary" style={{ fontSize: 12 }}>Số lượng:</Text>
+                                                            <InputNumber
+                                                                min={0} max={selectedHotel.availableDouble}
+                                                                value={tourDoubleRooms}
+                                                                onChange={v => setTourDoubleRooms(v || 0)}
+                                                                placeholder="0"
+                                                                style={{ width: 80 }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #e2e8f0' }}>
+                                                            <Text type="secondary" style={{ fontSize: 11 }}>Thành tiền:</Text>
+                                                            <div style={{ fontWeight: '600', color: '#1e293b' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format((selectedHotel.price || 0) * 1.5 * tourDoubleRooms)}</div>
+                                                        </div>
+                                                    </div>
+                                                </Col>
+                                            </Row>
+                                        </>
+                                    )}
+
+                                    {/* Flight seat selection - Round trip mandatory */}
+                                    {selectedFlight && (
+                                        <>
+                                            <Divider titlePlacement="left" styles={{ content: { margin: 0 } }}>
+                                                ✈️ Vé Máy bay: {selectedFlight.name}
+                                            </Divider>
+                                            <Row gutter={[16, 16]} style={{ display: 'flex', alignItems: 'stretch' }}>
+                                                <Col span={12} style={{ display: 'flex' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: '#f0f9ff', padding: '16px', borderRadius: '12px', border: '1px solid #bae6fd', flex: 1 }}>
+                                                        <div style={{ marginBottom: 16 }}>
+                                                            <div style={{ fontWeight: 'bold', color: '#0369a1', fontSize: 16 }}>Phổ thông</div>
+                                                            <div style={{ fontSize: 12, color: '#0c4a6e', marginTop: 4 }}>Còn: {selectedFlight.availableEconomy} | Giá: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format((selectedFlight.price || 0) * 2)}</div>
+                                                            <div style={{ fontSize: 11, color: '#0369a1', fontStyle: 'italic', opacity: 0.8 }}>(Đã gồm khứ hồi)</div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                            <Text type="secondary" style={{ fontSize: 12 }}>Số ghế:</Text>
+                                                            <InputNumber
+                                                                min={0} max={selectedFlight.availableEconomy}
+                                                                value={tourEconomySeats}
+                                                                onChange={v => setTourEconomySeats(v || 0)}
+                                                                placeholder="0"
+                                                                style={{ width: 80 }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #bae6fd' }}>
+                                                            <Text type="secondary" style={{ fontSize: 11 }}>Tổng vé:</Text>
+                                                            <div style={{ fontWeight: '600', color: '#0369a1' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format((selectedFlight.price || 0) * 2 * tourEconomySeats)}</div>
+                                                        </div>
+                                                    </div>
+                                                </Col>
+                                                <Col span={12} style={{ display: 'flex' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: '#f5f3ff', padding: '16px', borderRadius: '12px', border: '1px solid #ddd6fe', flex: 1 }}>
+                                                        <div style={{ marginBottom: 16 }}>
+                                                            <div style={{ fontWeight: 'bold', color: '#6d28d9', fontSize: 16 }}>Thương gia</div>
+                                                            <div style={{ fontSize: 12, color: '#4c1d95', marginTop: 4 }}>Còn: {selectedFlight.availableBusiness} | Giá: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format((selectedFlight.price || 0) * 2 * 1.5)}</div>
+                                                            <div style={{ fontSize: 11, color: '#6d28d9', fontStyle: 'italic', opacity: 0.8 }}>(Đã gồm khứ hồi)</div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                            <Text type="secondary" style={{ fontSize: 12 }}>Số ghế:</Text>
+                                                            <InputNumber
+                                                                min={0} max={selectedFlight.availableBusiness}
+                                                                value={tourBusinessSeats}
+                                                                onChange={v => setTourBusinessSeats(v || 0)}
+                                                                placeholder="0"
+                                                                style={{ width: 80 }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #ddd6fe' }}>
+                                                            <Text type="secondary" style={{ fontSize: 11 }}>Tổng vé:</Text>
+                                                            <div style={{ fontWeight: '600', color: '#6d28d9' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format((selectedFlight.price || 0) * 2 * 1.5 * tourBusinessSeats)}</div>
+                                                        </div>
+                                                    </div>
+                                                </Col>
+                                            </Row>
+                                        </>
+                                    )}
                                 </>
                             )}
 

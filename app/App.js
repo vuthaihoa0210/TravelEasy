@@ -15,9 +15,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
-  BackHandler
+  BackHandler,
+  Modal,
+  useColorScheme
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -25,13 +27,56 @@ const { width } = Dimensions.get('window');
 
 // Thay đổi URL này thành IP nội bộ của bạn nếu dùng thiết bị thật
 // Đối với Android Emulator: http://10.0.2.2:4000
-const BACKEND_URL = 'http://192.168.1.5:4000'; 
+// Đối với Web/Trình duyệt trên laptop: http://localhost:4000
+const BACKEND_URL = 'http://192.168.1.5:4000';
+
+
+const lightColors = {
+  bg: '#ffffff',
+  text: '#1e293b',
+  subText: '#64748b',
+  cardBg: '#ffffff',
+  cardBorder: '#e2e8f0',
+  border: '#e2e8f0',
+  primary: '#2563eb',
+  headerBg: '#2563eb',
+  headerText: '#ffffff',
+  lightGray: '#f1f5f9',
+  inputBg: '#f8fafc',
+  bottomTabBg: '#ffffff',
+  bottomTabBorder: '#eee',
+};
+
+const darkColors = {
+  bg: '#0f172a',
+  text: '#f8fafc',
+  subText: '#94a3b8',
+  cardBg: '#1e293b',
+  cardBorder: '#334155',
+  border: '#334155',
+  primary: '#3b82f6',
+  headerBg: '#1e293b',
+  headerText: '#f8fafc',
+  lightGray: '#1e293b',
+  inputBg: '#0f172a',
+  bottomTabBg: '#1e293b',
+  bottomTabBorder: '#1e293b',
+};
 
 export default function App() {
+  const scheme = useColorScheme();
+  const isDarkMode = scheme === 'dark';
+  const theme = isDarkMode ? darkColors : lightColors;
+  const styles = React.useMemo(() => createStyles(theme), [isDarkMode]);
+
   // Navigation States
   const [screen, setScreen] = useState('Welcome'); // 'Welcome' | 'Login' | 'Register' | 'Home' | 'Tours' | 'Hotels' | 'Flights' | 'TourDetail' | 'HotelDetail' | 'Chat' | 'Profile' | 'Blogs'
   const [activeTab, setActiveTab] = useState('Home');
   const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedTourHotel, setSelectedTourHotel] = useState(null);
+  const [selectedTourFlight, setSelectedTourFlight] = useState(null);
+  const [detailItem, setDetailItem] = useState(null);
+  const [detailType, setDetailType] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState(null);
@@ -42,7 +87,10 @@ export default function App() {
     customerName: '',
     customerPhone: '',
     totalPeople: 1,
+    singleRooms: 1,
     doubleRooms: 0,
+    economySeats: 1,
+    businessSeats: 0,
     seatClass: 'ECONOMY',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
@@ -149,6 +197,16 @@ export default function App() {
          .then(res => res.json())
          .then(data => setItemReviews(Array.isArray(data) ? data : []))
          .catch(e => setItemReviews([]));
+    }
+  }, [screen, selectedItem]);
+
+  useEffect(() => {
+    if (screen === 'TourDetail' && selectedItem) {
+      const tourHotels = hotels.filter(h => h.location === selectedItem.location);
+      const tourFlights = flights.filter(f => f.location === selectedItem.location);
+      
+      setSelectedTourHotel(tourHotels.length > 0 ? tourHotels[0].id : null);
+      setSelectedTourFlight(tourFlights.length > 0 ? tourFlights[0].id : null);
     }
   }, [screen, selectedItem]);
 
@@ -375,7 +433,7 @@ export default function App() {
       
       <View style={styles.welcomeContent}>
         <View style={styles.logoCircle}>
-          <Ionicons name="airplane" size={50} color="#2563eb" />
+          <Ionicons name="airplane" size={50} color={theme.primary} />
         </View>
         <Text style={styles.welcomeTitle}>TravelEasy</Text>
         <Text style={styles.welcomeSubtitle}>Hành trình vạn dặm, bắt đầu từ một cái chạm.</Text>
@@ -437,7 +495,7 @@ export default function App() {
       </ScrollView>
 
       <View style={styles.chatInputRow}>
-        <TouchableOpacity style={styles.chatAttachBtn}><Ionicons name="add-circle-outline" size={26} color="#2563eb" /></TouchableOpacity>
+        <TouchableOpacity style={styles.chatAttachBtn}><Ionicons name="add-circle-outline" size={26} color={theme.primary} /></TouchableOpacity>
         <TextInput 
           style={styles.chatInputBox}
           placeholder="Nhập tin nhắn..."
@@ -446,7 +504,7 @@ export default function App() {
           multiline
         />
         <TouchableOpacity style={styles.chatSendBtn} onPress={sendMessage}>
-          <Ionicons name="send" size={22} color={chatInput.trim() ? "#2563eb" : "#ccc"} />
+          <Ionicons name="send" size={22} color={chatInput.trim() ? theme.primary : "#ccc"} />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -480,7 +538,7 @@ export default function App() {
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Họ và Tên</Text>
               <View style={styles.inputBox}>
-                <Ionicons name="person-outline" size={20} color="#2563eb" />
+                <Ionicons name="person-outline" size={20} color={theme.primary} />
                 <TextInput 
                   style={styles.input} 
                   placeholder="Nhập tên của bạn" 
@@ -493,7 +551,7 @@ export default function App() {
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Email</Text>
               <View style={styles.inputBox}>
-                <Ionicons name="mail-outline" size={20} color="#2563eb" />
+                <Ionicons name="mail-outline" size={20} color={theme.primary} />
                 <TextInput 
                   style={styles.input} 
                   placeholder="name@example.com" 
@@ -508,7 +566,7 @@ export default function App() {
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Mật khẩu</Text>
               <View style={styles.inputBox}>
-                <Ionicons name="lock-closed-outline" size={20} color="#2563eb" />
+                <Ionicons name="lock-closed-outline" size={20} color={theme.primary} />
                 <TextInput 
                   style={styles.input} 
                   placeholder="••••••••" 
@@ -530,7 +588,7 @@ export default function App() {
         ) : (
           <View style={styles.form}>
             <Text style={styles.otpMessage}>
-              Mã xác nhận đã gửi tới <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>{regData.email}</Text>
+              Mã xác nhận đã gửi tới <Text style={{ color: theme.primary, fontWeight: 'bold' }}>{regData.email}</Text>
             </Text>
 
             {receivedOtp && (
@@ -552,7 +610,7 @@ export default function App() {
             </View>
 
             <TouchableOpacity 
-              style={[styles.authSubmitBtn, { backgroundColor: '#2563eb' }]} 
+              style={[styles.authSubmitBtn, { backgroundColor: theme.primary }]} 
               onPress={onRegister}
               disabled={loading}
             >
@@ -578,7 +636,7 @@ export default function App() {
           <View style={styles.inputWrapper}>
              <Text style={styles.inputLabel}>Email</Text>
              <View style={styles.inputBox}>
-                <Ionicons name="mail-outline" size={20} color="#2563eb" />
+                <Ionicons name="mail-outline" size={20} color={theme.primary} />
                 <TextInput 
                   style={styles.input} 
                   placeholder="Email của bạn" 
@@ -593,7 +651,7 @@ export default function App() {
           <View style={styles.inputWrapper}>
              <Text style={styles.inputLabel}>Mật khẩu</Text>
              <View style={styles.inputBox}>
-                <Ionicons name="lock-closed-outline" size={20} color="#2563eb" />
+                <Ionicons name="lock-closed-outline" size={20} color={theme.primary} />
                 <TextInput 
                   style={styles.input} 
                   placeholder="Mật khẩu của bạn" 
@@ -605,7 +663,7 @@ export default function App() {
           </View>
 
           <TouchableOpacity style={{ alignSelf: 'flex-end', marginBottom: 25 }}>
-            <Text style={{ color: '#2563eb', fontWeight: '600' }}>Quên mật khẩu?</Text>
+            <Text style={{ color: theme.primary, fontWeight: '600' }}>Quên mật khẩu?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -617,9 +675,9 @@ export default function App() {
           </TouchableOpacity>
 
           <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 30 }}>
-            <Text style={{ color: '#666' }}>Mới sử dụng TravelEasy? </Text>
+            <Text style={{ color: theme.subText }}>Mới sử dụng TravelEasy? </Text>
             <TouchableOpacity onPress={() => setScreen('Register')}>
-              <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>Tạo tài khoản</Text>
+              <Text style={{ color: theme.primary, fontWeight: 'bold' }}>Tạo tài khoản</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -648,7 +706,7 @@ export default function App() {
 
     const statusColor = {
       PENDING: '#faad14',
-      CONFIRMED: '#2563eb',
+      CONFIRMED: theme.primary,
       PAID: '#52c41a',
       CANCELLED: '#f5222d',
       COMPLETED: '#13c2c2',
@@ -670,11 +728,11 @@ export default function App() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
           <View style={{ alignItems: 'center', marginVertical: 30 }}>
-            <View style={[styles.logoCircle, { backgroundColor: '#2563eb', marginBottom: 15 }]}>
+            <View style={[styles.logoCircle, { backgroundColor: theme.primary, marginBottom: 15 }]}>
               <Ionicons name="person" size={50} color="white" />
             </View>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#0f172a' }}>{userData?.name || 'Người dùng'}</Text>
-            <Text style={{ fontSize: 16, color: '#666' }}>{userData?.email || 'N/A'}</Text>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.text }}>{userData?.name || 'Người dùng'}</Text>
+            <Text style={{ fontSize: 16, color: theme.subText }}>{userData?.email || 'N/A'}</Text>
           </View>
 
           <View style={{ paddingHorizontal: 20 }}>
@@ -682,22 +740,22 @@ export default function App() {
             {userBookings.length === 0 ? (
               <View style={styles.emptyBookings}>
                 <Ionicons name="receipt-outline" size={48} color="#ddd" />
-                <Text style={{ color: '#999', marginTop: 10 }}>Bạn chưa có đơn đặt chỗ nào.</Text>
+                <Text style={{ color: theme.subText, marginTop: 10 }}>Bạn chưa có đơn đặt chỗ nào.</Text>
               </View>
             ) : (
               userBookings.map(b => (
                 <TouchableOpacity key={b.id} style={styles.bookingCardShort} onPress={() => { setSelectedItem(b); setScreen('BookingDetail'); }}>
                   <View style={styles.bookingCardHeader}>
                     <View style={[styles.typeBadge, { backgroundColor: '#2563eb10' }]}>
-                      <Text style={{ color: '#2563eb', fontSize: 10, fontWeight: 'bold' }}>{typeLabel[b.type] || b.type}</Text>
+                      <Text style={{ color: theme.primary, fontSize: 10, fontWeight: 'bold' }}>{typeLabel[b.type] || b.type}</Text>
                     </View>
                     <Text style={{ color: statusColor[b.status] || '#999', fontSize: 12, fontWeight: 'bold' }}>{statusLabel[b.status] || b.status}</Text>
                   </View>
                   <Text style={styles.bookingItemName} numberOfLines={1}>{b.itemName}</Text>
                   <View style={styles.bookingCardFooter}>
                     <View>
-                      <Text style={{ fontSize: 10, color: '#999' }}>Ngày đặt: {new Date(b.createdAt).toLocaleDateString()}</Text>
-                      <Text style={{ fontSize: 10, color: '#999' }}>Bắt đầu: {new Date(b.startDate).toLocaleDateString()}</Text>
+                      <Text style={{ fontSize: 10, color: theme.subText }}>Ngày đặt: {new Date(b.createdAt).toLocaleDateString()}</Text>
+                      <Text style={{ fontSize: 10, color: theme.subText }}>Bắt đầu: {new Date(b.startDate).toLocaleDateString()}</Text>
                     </View>
                     <Text style={styles.bookingPrice}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(b.finalPrice || b.price)}</Text>
                   </View>
@@ -713,11 +771,11 @@ export default function App() {
             ].map((item, idx) => (
               <TouchableOpacity key={idx} style={styles.settingsItem}>
                 <View style={[styles.categoryIconCircle, { width: 40, height: 40, marginBottom: 0 }]}>
-                  <Ionicons name={item.icon} size={20} color="#2563eb" />
+                  <Ionicons name={item.icon} size={20} color={theme.primary} />
                 </View>
                 <View style={{ flex: 1, marginLeft: 15, justifyContent: 'center' }}>
                   <Text style={{ fontSize: 15, fontWeight: '600' }}>{item.label}</Text>
-                  {item.detail ? <Text style={{ fontSize: 12, color: '#666' }}>{item.detail}</Text> : null}
+                  {item.detail ? <Text style={{ fontSize: 12, color: theme.subText }}>{item.detail}</Text> : null}
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#ccc" />
               </TouchableOpacity>
@@ -757,7 +815,33 @@ export default function App() {
       if (isFlight) {
         return base * (bookingForm.totalPeople || 0) + (base * 1.5) * (bookingForm.doubleRooms || 0);
       }
-      return base * (bookingForm.totalPeople || 1);
+      
+      // Tour Price: giá tour x đầu người + vé máy bay x đầu người + giá phòng x số phòng
+      const totalPeople = bookingForm.totalPeople || 1;
+      let tourTotal = base * totalPeople;
+      
+      if (bookingForm.selectedHotelId) {
+        const hotel = hotels.find(h => h.id === bookingForm.selectedHotelId);
+        if (hotel) {
+          const singleRooms = bookingForm.singleRooms || 0;
+          const doubleRooms = bookingForm.doubleRooms || 0;
+          tourTotal += (hotel.price || 0) * singleRooms;
+          tourTotal += (hotel.price || 0) * 1.5 * doubleRooms;
+        }
+      }
+      if (bookingForm.selectedFlightId) {
+        const flight = flights.find(f => f.id === bookingForm.selectedFlightId);
+        if (flight) {
+          const flightPrice = flight.price || 0;
+          // Khứ hồi = x2 (chiều đi + chiều về)
+          const economySeats = bookingForm.economySeats || 0;
+          const businessSeats = bookingForm.businessSeats || 0;
+          tourTotal += flightPrice * 2 * economySeats;
+          tourTotal += flightPrice * 2 * 1.5 * businessSeats;
+        }
+      }
+
+      return tourTotal;
     };
 
     const total = calculatePrice();
@@ -781,7 +865,7 @@ export default function App() {
           totalCount = (bookingForm.totalPeople || 0) + (bookingForm.doubleRooms || 0);
         }
 
-        const body = {
+        const body: any = {
           userId: userData.id,
           type: type.toUpperCase(),
           itemId: item.id,
@@ -793,6 +877,16 @@ export default function App() {
           customerPhone: bookingForm.customerPhone,
           totalPeople: totalCount || 1,
           seatClass: builtSeatClass,
+          hotelId: bookingForm.selectedHotelId || null,
+          flightId: bookingForm.selectedFlightId || null,
+        };
+
+        // Tour-specific hotel & flight inventory data
+        if (isTour) {
+          body.singleRooms = bookingForm.singleRooms || 0;
+          body.doubleRooms = bookingForm.doubleRooms || 0;
+          body.economySeats = bookingForm.economySeats || 0;
+          body.businessSeats = bookingForm.businessSeats || 0;
         };
 
         const res = await fetch(`${BACKEND_URL}/api/bookings`, {
@@ -829,9 +923,9 @@ export default function App() {
           <Text style={styles.screenTitle}>Xác nhận đặt hàng</Text>
         </View>
         <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: 20 }]}>
-          <View style={{ padding: 15, borderRadius: 15, backgroundColor: 'white', marginBottom: 20, elevation: 2 }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#2563eb' }}>{item.name}</Text>
-            <Text style={{ color: '#666', fontSize: 13, marginTop: 5 }}>Đơn giá: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.price)}</Text>
+          <View style={{ padding: 15, borderRadius: 15, backgroundColor: theme.bg, marginBottom: 20, elevation: 2 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.primary }}>{item.name}</Text>
+            <Text style={{ color: theme.subText, fontSize: 13, marginTop: 5 }}>Đơn giá: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.price)}</Text>
           </View>
 
           <View style={styles.bookingForm}>
@@ -879,6 +973,63 @@ export default function App() {
               )}
             </View>
 
+            {/* Tour: Chọn Phòng & Hạng Vé */}
+            {isTour && bookingForm.selectedHotelId && (
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>🏨 Số phòng Khách sạn:</Text>
+                <View style={{ flexDirection: 'row', gap: 15, marginTop: 5 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.inputLabel, { fontSize: 12 }]}>Phòng Đơn</Text>
+                    <TextInput
+                      style={styles.bookingInput}
+                      keyboardType="numeric"
+                      value={String(bookingForm.singleRooms || 0)}
+                      onChangeText={t => setBookingForm({...bookingForm, singleRooms: parseInt(t) || 0})}
+                    />
+                    <Text style={{ fontSize: 10, color: theme.subText }}>Còn: {hotels.find(h => h.id === bookingForm.selectedHotelId)?.availableSingle ?? '?'} | Giá: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hotels.find(h => h.id === bookingForm.selectedHotelId)?.price || 0)}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.inputLabel, { fontSize: 12 }]}>Phòng Đôi</Text>
+                    <TextInput
+                      style={styles.bookingInput}
+                      keyboardType="numeric"
+                      value={String(bookingForm.doubleRooms || 0)}
+                      onChangeText={t => setBookingForm({...bookingForm, doubleRooms: parseInt(t) || 0})}
+                    />
+                    <Text style={{ fontSize: 10, color: theme.subText }}>Còn: {hotels.find(h => h.id === bookingForm.selectedHotelId)?.availableDouble ?? '?'} | Giá: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format((hotels.find(h => h.id === bookingForm.selectedHotelId)?.price || 0) * 1.5)}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {isTour && bookingForm.selectedFlightId && (
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>✈️ Vé Máy bay (Khứ hồi):</Text>
+                <View style={{ flexDirection: 'row', gap: 15, marginTop: 5 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.inputLabel, { fontSize: 12 }]}>Phổ thông</Text>
+                    <TextInput
+                      style={styles.bookingInput}
+                      keyboardType="numeric"
+                      value={String(bookingForm.economySeats || 0)}
+                      onChangeText={t => setBookingForm({...bookingForm, economySeats: parseInt(t) || 0})}
+                    />
+                    <Text style={{ fontSize: 10, color: theme.subText }}>Còn: {flights.find(f => f.id === bookingForm.selectedFlightId)?.availableEconomy ?? '?'} | Giá: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format((flights.find(f => f.id === bookingForm.selectedFlightId)?.price || 0) * 2)}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.inputLabel, { fontSize: 12 }]}>Thương gia</Text>
+                    <TextInput
+                      style={styles.bookingInput}
+                      keyboardType="numeric"
+                      value={String(bookingForm.businessSeats || 0)}
+                      onChangeText={t => setBookingForm({...bookingForm, businessSeats: parseInt(t) || 0})}
+                    />
+                    <Text style={{ fontSize: 10, color: theme.subText }}>Còn: {flights.find(f => f.id === bookingForm.selectedFlightId)?.availableBusiness ?? '?'} | Giá: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format((flights.find(f => f.id === bookingForm.selectedFlightId)?.price || 0) * 2 * 1.5)}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>{isFlight ? 'Ngày bay' : 'Ngày bắt đầu'}</Text>
               <TextInput 
@@ -902,7 +1053,7 @@ export default function App() {
             )}
 
             <View style={styles.priceSummary}>
-              <Text style={{ fontSize: 16, color: '#333' }}>Tổng cộng:</Text>
+              <Text style={{ fontSize: 16, color: theme.text }}>Tổng cộng:</Text>
               <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#faad14' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(total)}</Text>
             </View>
 
@@ -947,9 +1098,9 @@ export default function App() {
 
   const renderHome = () => (
     <SafeAreaView style={styles.mainContainer}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
       {/* Header */}
-      <LinearGradient colors={['#2563eb', '#1d4ed8']} style={styles.homeHeader}>
+      <LinearGradient colors={[theme.primary, '#1d4ed8']} style={styles.homeHeader}>
         <View style={styles.homeHeaderContent}>
           <View>
             <Text style={styles.homeWelcome}>Chào mừng {userData ? userData.name : 'bạn'},</Text>
@@ -989,7 +1140,7 @@ export default function App() {
             {[
               { id: 'Tours', icon: 'map-outline', label: 'Tours', color: '#52c41a' },
               { id: 'Hotels', icon: 'business-outline', label: 'Khách sạn', color: '#fa8c16' },
-              { id: 'Flights', icon: 'airplane-outline', label: 'Máy bay', color: '#2563eb' },
+              { id: 'Flights', icon: 'airplane-outline', label: 'Máy bay', color: theme.primary },
               { id: 'Chat', icon: 'chatbubbles-outline', label: 'Hỗ trợ', color: '#722ed1' },
             ].map(cat => (
               <TouchableOpacity key={cat.id} style={styles.categoryItem} onPress={() => cat.id === 'Chat' ? startChat() : setScreen(cat.id)}>
@@ -1157,10 +1308,25 @@ export default function App() {
 
     const isMultiImage = galleryImages.length > 1;
 
+    let displayPrice = item.price || 0;
+    let selectedHotelItem = null;
+    let selectedFlightItem = null;
+
+    if (type === 'Tour') {
+      if (selectedTourHotel) {
+        selectedHotelItem = hotels.find(h => h.id === selectedTourHotel);
+        if (selectedHotelItem) displayPrice += selectedHotelItem.price || 0;
+      }
+      if (selectedTourFlight) {
+        selectedFlightItem = flights.find(f => f.id === selectedTourFlight);
+        if (selectedFlightItem) displayPrice += selectedFlightItem.price || 0;
+      }
+    }
+
     return (
       <View style={styles.mainContainer}>
         <StatusBar barStyle="light-content" />
-        <ScrollView style={{ backgroundColor: 'white' }}>
+        <ScrollView style={{ backgroundColor: theme.bg }}>
           {/* Image Gallery */}
           <View>
             <ScrollView 
@@ -1185,6 +1351,8 @@ export default function App() {
               onPress={() => {
                 setScreen('Home');
                 setActiveImage(0); // Reset index
+                setSelectedTourHotel(null);
+                setSelectedTourFlight(null);
               }}
             >
               <Ionicons name="arrow-back" size={24} color="white" />
@@ -1243,12 +1411,71 @@ export default function App() {
             )}
 
             <View style={[styles.detailDivider, { marginTop: 20 }]} />
+
+            {type === 'Tour' && (
+              <View style={{ marginBottom: 10 }}>
+                <Text style={styles.detailSectionTitle}>Khách sạn đã bao gồm ({item.location})</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -24, paddingHorizontal: 24, paddingBottom: 15 }}>
+                  {hotels.filter(h => h.location === item.location).map(hotel => (
+                    <TouchableOpacity 
+                      key={hotel.id} 
+                      onPress={() => setSelectedTourHotel(hotel.id)}
+                      style={[styles.horizontalCard, { width: 180, borderWidth: selectedTourHotel === hotel.id ? 2 : 0, borderColor: theme.primary }]}
+                    >
+                      <Image source={{ uri: getImageUrl(hotel.image) }} style={styles.horizontalCardImage} />
+                      <View style={styles.horizontalCardInfo}>
+                        <Text style={styles.horizontalCardName} numberOfLines={1}>{hotel.name}</Text>
+                        <Text style={{ fontSize: 11, color: theme.subText, marginTop: 2 }}>Phòng Đơn: {hotel.availableSingle} | Đôi: {hotel.availableDouble}</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5 }}>
+                          <Text style={styles.horizontalCardPrice}>+{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hotel.price || 0)}</Text>
+                          <TouchableOpacity onPress={() => { setDetailItem(hotel); setDetailType('hotel'); }}>
+                            <Text style={{ fontSize: 11, color: theme.primary, fontWeight: 'bold' }}>Chi tiết</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                  {hotels.filter(h => h.location === item.location).length === 0 && (
+                    <Text style={{ color: theme.subText, fontStyle: 'italic' }}>Chưa có phòng trống tại khu vực này.</Text>
+                  )}
+                </ScrollView>
+
+                <Text style={[styles.detailSectionTitle, { marginTop: 10 }]}>Chuyến bay khứ hồi ({item.location})</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -24, paddingHorizontal: 24, paddingBottom: 15 }}>
+                  {flights.filter(f => f.location === item.location).map(flight => (
+                    <TouchableOpacity 
+                      key={flight.id} 
+                      onPress={() => setSelectedTourFlight(flight.id)}
+                      style={[styles.verticalCard, { marginHorizontal: 0, marginRight: 15, width: 260, padding: 10, borderWidth: selectedTourFlight === flight.id ? 2 : 0, borderColor: theme.primary }]}
+                    >
+                      <View style={[styles.verticalCardInfo, { marginLeft: 0 }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={[styles.verticalCardName, { fontSize: 15 }]} numberOfLines={1}>{flight.name}</Text>
+                          <Text style={{ color: theme.primary, fontWeight: 'bold', fontSize: 12 }}>{flight.code}</Text>
+                        </View>
+                        <Text style={{ fontSize: 11, color: theme.subText, marginTop: 4 }}>Ghế Phổ thông: {flight.availableEconomy} | Thương gia: {flight.availableBusiness}</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5 }}>
+                          <Text style={[styles.verticalCardPrice, { marginTop: 0, fontSize: 14 }]}>+{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(flight.price || 0)}</Text>
+                          <TouchableOpacity onPress={() => { setDetailItem(flight); setDetailType('flight'); }}>
+                            <Text style={{ fontSize: 11, color: theme.primary, fontWeight: 'bold' }}>Chi tiết</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                   {flights.filter(f => f.location === item.location).length === 0 && (
+                    <Text style={{ color: theme.subText, fontStyle: 'italic' }}>Chưa có chuyến bay phù hợp lúc này.</Text>
+                  )}
+                </ScrollView>
+                <View style={[styles.detailDivider, { marginTop: 20 }]} />
+              </View>
+            )}
             <Text style={styles.detailSectionTitle}>Đánh giá ({itemReviews.length})</Text>
             {itemReviews.length === 0 ? (
-              <Text style={{ color: '#999', fontStyle: 'italic', marginBottom: 20 }}>Chưa có đánh giá nào.</Text>
+              <Text style={{ color: theme.subText, fontStyle: 'italic', marginBottom: 20 }}>Chưa có đánh giá nào.</Text>
             ) : (
               itemReviews.map(r => (
-                <View key={r.id} style={{ marginBottom: 15, backgroundColor: '#f8fafc', padding: 15, borderRadius: 10 }}>
+                <View key={r.id} style={{ marginBottom: 15, backgroundColor: theme.lightGray, padding: 15, borderRadius: 10 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
                     <Text style={{ fontWeight: 'bold' }}>{r.user?.name || 'Khách hàng'}</Text>
                     <View style={{ flexDirection: 'row' }}>
@@ -1257,11 +1484,11 @@ export default function App() {
                       ))}
                     </View>
                   </View>
-                  <Text style={{ fontSize: 12, color: '#999', marginBottom: 8 }}>{new Date(r.createdAt).toLocaleDateString('vi-VN')}</Text>
-                  <Text style={{ color: '#333' }}>{r.comment}</Text>
+                  <Text style={{ fontSize: 12, color: theme.subText, marginBottom: 8 }}>{new Date(r.createdAt).toLocaleDateString('vi-VN')}</Text>
+                  <Text style={{ color: theme.text }}>{r.comment}</Text>
                   
                   <TouchableOpacity onPress={() => setReplyTarget(replyTarget === r.id ? null : r.id)} style={{ marginTop: 8 }}>
-                     <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 13 }}>Phản hồi</Text>
+                     <Text style={{ color: theme.primary, fontWeight: 'bold', fontSize: 13 }}>Phản hồi</Text>
                   </TouchableOpacity>
 
                   {/* Render replies */}
@@ -1270,7 +1497,7 @@ export default function App() {
                        {r.replies.map(reply => (
                          <View key={reply.id} style={{ marginBottom: 10 }}>
                            <Text style={{ fontWeight: 'bold', fontSize: 13 }}>{reply.user?.name || 'Thành viên'}</Text>
-                           <Text style={{ fontSize: 13, color: '#444' }}>{reply.comment}</Text>
+                           <Text style={{ fontSize: 13, color: theme.subText }}>{reply.comment}</Text>
                          </View>
                        ))}
                     </View>
@@ -1309,9 +1536,9 @@ export default function App() {
                              }
                            } catch(e) {} finally { setLoading(false); }
                          }}
-                         style={{ backgroundColor: '#2563eb', justifyContent: 'center', paddingHorizontal: 15, borderRadius: 8, marginLeft: 5 }}
+                         style={{ backgroundColor: theme.primary, justifyContent: 'center', paddingHorizontal: 15, borderRadius: 8, marginLeft: 5 }}
                        >
-                         {loading && replyTarget === r.id ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: 'bold' }}>Gửi</Text>}
+                         {loading && replyTarget === r.id ? <ActivityIndicator color="white" /> : <Text style={{ color: theme.headerText, fontWeight: 'bold' }}>Gửi</Text>}
                        </TouchableOpacity>
                      </View>
                   )}
@@ -1328,7 +1555,7 @@ export default function App() {
           <View>
             <Text style={styles.footerPriceLabel}>{type === 'Hotel' ? 'Giá 1 đêm' : 'Giá trọn gói'}</Text>
             <Text style={styles.footerPriceValue}>
-              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.price)}
+              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(displayPrice)}
             </Text>
           </View>
           <TouchableOpacity 
@@ -1352,6 +1579,8 @@ export default function App() {
                   seatClass: 'ECONOMY',
                   startDate: new Date().toISOString().split('T')[0],
                   endDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+                  selectedHotelId: type === 'Tour' ? selectedTourHotel : null,
+                  selectedFlightId: type === 'Tour' ? selectedTourFlight : null,
                 });
                 setScreen('Booking');
               }
@@ -1360,6 +1589,59 @@ export default function App() {
             <Text style={styles.footerBookBtnText}>Đặt ngay</Text>
           </TouchableOpacity>
         </View>
+
+        {/* --- DETAIL MODAL QUICK PREVIEW --- */}
+        <Modal visible={!!detailItem} animationType="slide" transparent={true} onRequestClose={() => setDetailItem(null)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: theme.bg, borderTopLeftRadius: 30, borderTopRightRadius: 30, overflow: 'hidden', height: '85%' }}>
+              {detailItem && (
+                <ScrollView contentContainerStyle={{ paddingBottom: 30 }}>
+                  <Image source={{ uri: getImageUrl(detailItem.image) }} style={{ width: '100%', height: 250 }} resizeMode="cover" />
+                  <View style={{ padding: 20 }}>
+                    <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.text }}>{detailItem.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5, marginBottom: 15 }}>
+                      <Ionicons name="star" size={16} color="#fadb14" />
+                      <Text style={{ fontWeight: 'bold', marginLeft: 4, marginRight: 15 }}>{(detailItem.rating || 5).toFixed(1)}</Text>
+                      <Ionicons name="location-outline" size={16} color="#666" />
+                      <Text style={{ color: theme.subText, marginLeft: 4 }}>{detailItem.location}</Text>
+                    </View>
+                    <Text style={{ fontSize: 14, color: theme.subText, lineHeight: 22, marginBottom: 20 }}>
+                      {detailItem.description || (detailType === 'hotel' ? 'Khách sạn đẳng cấp với không gian sang trọng, hiện đại và dịch vụ chuyên nghiệp. Vị trí thuận tiện, gần các điểm tham quan nổi tiếng.' : 'Chuyến bay chất lượng cao với đội ngũ phi hành đoàn chuyên nghiệp. Hành lý, bữa ăn và giải trí trên chuyến bay đều được bố trí kỹ lưỡng.')}
+                    </Text>
+                    
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 10, color: theme.text }}>Tiện ích nổi bật</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 }}>
+                      {(detailType === 'hotel' ? ['Wifi miễn phí', 'Hồ bơi', 'Ăn sáng', 'Spa & Gym', 'Bãi đỗ xe', 'Lễ tân 24/7'] : ['Hành lý 20kg', 'Suất ăn', 'Ghế rộng', 'Giải trí', 'Wifi', 'Đúng giờ']).map((item, idx) => (
+                        <View key={idx} style={{ backgroundColor: theme.lightGray, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginRight: 10, marginBottom: 10 }}>
+                          <Text style={{ fontSize: 12, color: theme.text, fontWeight: '600' }}>{item}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </ScrollView>
+              )}
+              {/* Modal Footer Actions */}
+              <View style={{ flexDirection: 'row', padding: 20, borderTopWidth: 1, borderColor: theme.border, backgroundColor: theme.bg }}>
+                <TouchableOpacity 
+                  onPress={() => setDetailItem(null)} 
+                  style={{ flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: theme.border, alignItems: 'center', marginRight: 15 }}
+                >
+                  <Text style={{ fontWeight: 'bold', color: theme.subText }}>Đóng lại</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={() => {
+                    if (detailType === 'hotel') setSelectedTourHotel(detailItem.id);
+                    else setSelectedTourFlight(detailItem.id);
+                    setDetailItem(null);
+                  }} 
+                  style={{ flex: 2, paddingVertical: 14, borderRadius: 12, backgroundColor: theme.primary, alignItems: 'center', elevation: 3 }}
+                >
+                  <Text style={{ fontWeight: 'bold', color: theme.headerText }}>✓ Chọn {detailType === 'hotel' ? 'Khách sạn' : 'Vé bay'} này</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   };
@@ -1375,7 +1657,7 @@ export default function App() {
             <View style={[styles.verticalCardInfo, { paddingLeft: 15 }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={styles.verticalCardName}>{flight.name}</Text>
-                <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>{flight.code}</Text>
+                <Text style={{ color: theme.primary, fontWeight: 'bold' }}>{flight.code}</Text>
               </View>
               <Text style={styles.verticalCardLoc}>Địa danh: {flight.location || 'Nội địa'}</Text>
               <Text style={styles.verticalCardPrice}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(flight.price || 0)}</Text>
@@ -1405,9 +1687,9 @@ export default function App() {
           <Ionicons 
             name={tab.icon} 
             size={24} 
-            color={screen === tab.id ? '#2563eb' : '#999'} 
+            color={screen === tab.id ? theme.primary : '#999'} 
           />
-          <Text style={[styles.tabLabel, { color: screen === tab.id ? '#2563eb' : '#999' }]}>{tab.label}</Text>
+          <Text style={[styles.tabLabel, { color: screen === tab.id ? theme.primary : '#999' }]}>{tab.label}</Text>
         </TouchableOpacity>
       ))}
     </View>
@@ -1485,44 +1767,44 @@ export default function App() {
             <Text style={styles.screenTitle}>Chi tiết đơn hàng</Text>
           </View>
           <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: 20 }]}>
-          <View style={{ backgroundColor: 'white', borderRadius: 20, padding: 20, elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 5 }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#2563eb', marginBottom: 15 }}>{b.itemName}</Text>
+          <View style={{ backgroundColor: theme.bg, borderRadius: 20, padding: 20, elevation: 2, shadowcolor: theme.text, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 5 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.primary, marginBottom: 15 }}>{b.itemName}</Text>
             
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-              <Text style={{ color: '#666' }}>Mã đơn:</Text>
+              <Text style={{ color: theme.subText }}>Mã đơn:</Text>
               <Text style={{ fontWeight: 'bold' }}>#BK-{b.id}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-              <Text style={{ color: '#666' }}>Trạng thái:</Text>
+              <Text style={{ color: theme.subText }}>Trạng thái:</Text>
               <Text style={{ fontWeight: 'bold', color: b.status === 'PENDING' ? '#faad14' : (b.status === 'CANCELLED' ? '#f5222d' : '#52c41a') }}>
                 {b.status === 'PENDING' ? 'Chờ xác nhận' : (b.status === 'CONFIRMED' ? 'Đã xác nhận' : (b.status === 'PAID' ? 'Đã thanh toán' : (b.status === 'CANCELLED' ? 'Đã hủy' : b.status)))}
               </Text>
             </View>
              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-              <Text style={{ color: '#666' }}>Người đặt:</Text>
+              <Text style={{ color: theme.subText }}>Người đặt:</Text>
               <Text style={{ fontWeight: 'bold' }}>{b.customerName}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-              <Text style={{ color: '#666' }}>Số điện thoại:</Text>
+              <Text style={{ color: theme.subText }}>Số điện thoại:</Text>
               <Text style={{ fontWeight: 'bold' }}>{b.customerPhone}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-              <Text style={{ color: '#666' }}>Bắt đầu:</Text>
+              <Text style={{ color: theme.subText }}>Bắt đầu:</Text>
               <Text style={{ fontWeight: 'bold' }}>{new Date(b.startDate).toLocaleDateString('vi-VN')}</Text>
             </View>
             {b.endDate && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-                <Text style={{ color: '#666' }}>Kết thúc:</Text>
+                <Text style={{ color: theme.subText }}>Kết thúc:</Text>
                 <Text style={{ fontWeight: 'bold' }}>{new Date(b.endDate).toLocaleDateString('vi-VN')}</Text>
               </View>
             )}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-              <Text style={{ color: '#666' }}>{b.type === 'HOTEL' ? 'Tổng số lượng phòng' : 'Số lượng khách'}:</Text>
+              <Text style={{ color: theme.subText }}>{b.type === 'HOTEL' ? 'Tổng số lượng phòng' : 'Số lượng khách'}:</Text>
               <Text style={{ fontWeight: 'bold' }}>{b.totalPeople}</Text>
             </View>
             {b.seatClass && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-                <Text style={{ color: '#666' }}>Chi tiết (Loại vé/Phòng):</Text>
+                <Text style={{ color: theme.subText }}>Chi tiết (Loại vé/Phòng):</Text>
                 <Text style={{ fontWeight: 'bold', maxWidth: '60%', textAlign: 'right' }}>{b.seatClass}</Text>
               </View>
             )}
@@ -1574,7 +1856,7 @@ export default function App() {
             )}
 
             {showReviewForm && (
-              <View style={{ marginTop: 20, backgroundColor: '#f8fafc', padding: 15, borderRadius: 15 }}>
+              <View style={{ marginTop: 20, backgroundColor: theme.lightGray, padding: 15, borderRadius: 15 }}>
                 <Text style={{ fontWeight: 'bold', marginBottom: 10 }}>Đánh giá của bạn:</Text>
                 <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
                   {[1, 2, 3, 4, 5].map(star => (
@@ -1591,7 +1873,7 @@ export default function App() {
                   onChangeText={t => setReviewForm({...reviewForm, comment: t})}
                 />
                 <TouchableOpacity 
-                  style={[styles.authSubmitBtn, { marginTop: 15, backgroundColor: '#2563eb' }]}
+                  style={[styles.authSubmitBtn, { marginTop: 15, backgroundColor: theme.primary }]}
                   onPress={submitReview}
                   disabled={loading}
                 >
@@ -1606,33 +1888,41 @@ export default function App() {
     );
   };
 
-  switch (screen) {
-    case 'Welcome': return renderWelcome();
-    case 'Register': return renderRegister();
-    case 'Login': return renderLogin();
-    case 'Home': return renderHome();
-    case 'Tours': return renderTours();
-    case 'Hotels': return renderHotels();
-    case 'Flights': return renderFlights();
-    case 'TourDetail': return renderDetail(selectedItem, 'Tour');
-    case 'HotelDetail': return renderDetail(selectedItem, 'Hotel');
-    case 'FlightDetail': return renderDetail(selectedItem, 'Flight');
-    case 'Booking': 
-      const itemType = selectedItem?.itinerary ? 'Tour' : (selectedItem?.code ? 'Flight' : 'Hotel');
-      return renderBooking(selectedItem, itemType);
-    case 'Chat': return renderChat();
-    case 'Profile': return renderProfile();
-    case 'BookingDetail': return renderBookingDetail(selectedItem);
-    case 'Blogs': return renderBlogs();
-    default: return renderWelcome();
-  }
+  const renderContent = () => {
+    switch (screen) {
+      case 'Welcome': return renderWelcome();
+      case 'Register': return renderRegister();
+      case 'Login': return renderLogin();
+      case 'Home': return renderHome();
+      case 'Tours': return renderTours();
+      case 'Hotels': return renderHotels();
+      case 'Flights': return renderFlights();
+      case 'TourDetail': return renderDetail(selectedItem, 'Tour');
+      case 'HotelDetail': return renderDetail(selectedItem, 'Hotel');
+      case 'FlightDetail': return renderDetail(selectedItem, 'Flight');
+      case 'Booking': 
+        const itemType = selectedItem?.itinerary ? 'Tour' : (selectedItem?.code ? 'Flight' : 'Hotel');
+        return renderBooking(selectedItem, itemType);
+      case 'Chat': return renderChat();
+      case 'Profile': return renderProfile();
+      case 'BookingDetail': return renderBookingDetail(selectedItem);
+      case 'Blogs': return renderBlogs();
+      default: return renderWelcome();
+    }
+  };
+
+  return (
+    <SafeAreaProvider>
+      {renderContent()}
+    </SafeAreaProvider>
+  );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   // New Premium Styles
   mainContainer: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: theme.lightGray,
   },
   homeHeader: {
     paddingTop: 50,
@@ -1654,16 +1944,16 @@ const styles = StyleSheet.create({
   homeTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: 'white',
+    color: theme.headerText,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
     borderRadius: 15,
     paddingHorizontal: 15,
     height: 50,
-    shadowColor: "#000",
+    shadowcolor: theme.text,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
@@ -1673,7 +1963,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
     fontSize: 15,
-    color: '#333',
+    color: theme.text,
   },
   categoriesSection: {
     marginTop: 25,
@@ -1682,7 +1972,7 @@ const styles = StyleSheet.create({
   sectionHeading: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: theme.text,
     marginBottom: 15,
   },
   categoryIcons: {
@@ -1704,7 +1994,7 @@ const styles = StyleSheet.create({
   categoryLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#444',
+    color: theme.subText,
   },
   toursSection: {
     marginTop: 30,
@@ -1718,7 +2008,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   seeAll: {
-    color: '#2563eb',
+    color: theme.primary,
     fontWeight: '600',
   },
   horizontalScroll: {
@@ -1726,10 +2016,10 @@ const styles = StyleSheet.create({
   },
   horizontalCard: {
     width: 200,
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
     borderRadius: 20,
     marginRight: 15,
-    shadowColor: "#000",
+    shadowcolor: theme.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 5,
@@ -1746,7 +2036,7 @@ const styles = StyleSheet.create({
   horizontalCardName: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: theme.text,
     marginBottom: 4,
   },
   ratingRow: {
@@ -1757,21 +2047,21 @@ const styles = StyleSheet.create({
   ratingValue: {
     fontSize: 12,
     marginLeft: 4,
-    color: '#666',
+    color: theme.subText,
   },
   horizontalCardPrice: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: theme.primary,
   },
   verticalCard: {
     flexDirection: 'row',
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
     borderRadius: 20,
     marginHorizontal: 24,
     marginBottom: 15,
     padding: 12,
-    shadowColor: "#000",
+    shadowcolor: theme.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 5,
@@ -1795,7 +2085,7 @@ const styles = StyleSheet.create({
   verticalCardName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: theme.text,
     flex: 1,
   },
   ratingBoxSmall: {
@@ -1813,7 +2103,7 @@ const styles = StyleSheet.create({
   },
   verticalCardLoc: {
     fontSize: 13,
-    color: '#666',
+    color: theme.subText,
     marginTop: 2,
   },
   verticalCardFooter: {
@@ -1824,10 +2114,10 @@ const styles = StyleSheet.create({
   verticalCardPrice: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: theme.primary,
   },
   bookIcon: {
-    backgroundColor: '#2563eb',
+    backgroundColor: theme.primary,
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -1840,12 +2130,12 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     height: 70,
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
     borderRadius: 35,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    shadowColor: "#000",
+    shadowcolor: theme.text,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
     shadowRadius: 20,
@@ -1864,12 +2154,12 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 24,
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
   },
   screenTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: theme.text,
   },
   tourCardFull: {
     borderRadius: 24,
@@ -1891,12 +2181,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
   tourNameFull: {
-    color: 'white',
+    color: theme.headerText,
     fontSize: 20,
     fontWeight: 'bold',
   },
   tourPriceFull: {
-    color: 'white',
+    color: theme.headerText,
     fontSize: 16,
     fontWeight: '600',
     marginTop: 5,
@@ -1906,11 +2196,11 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
-    shadowColor: "#000",
+    shadowcolor: theme.text,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
@@ -1926,7 +2216,7 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: 'white',
+    color: theme.headerText,
     marginBottom: 10,
   },
   welcomeSubtitle: {
@@ -1940,20 +2230,20 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   welcomePrimaryBtn: {
-    backgroundColor: '#2563eb',
+    backgroundColor: theme.primary,
     height: 60,
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
-    shadowColor: "#2563eb",
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 5,
   },
   welcomePrimaryBtnText: {
-    color: 'white',
+    color: theme.headerText,
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -1966,7 +2256,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.5)',
   },
   welcomeSecondaryBtnText: {
-    color: 'white',
+    color: theme.headerText,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1976,7 +2266,7 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: theme.text,
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -1992,30 +2282,30 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
     fontSize: 16,
-    color: '#0f172a',
+    color: theme.text,
   },
   authSubmitBtn: {
-    backgroundColor: '#2563eb',
+    backgroundColor: theme.primary,
     height: 60,
     borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: "#2563eb",
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
   authSubmitBtnText: {
-    color: 'white',
+    color: theme.headerText,
     fontSize: 18,
     fontWeight: 'bold',
   },
   otpMessage: {
     textAlign: 'center',
     fontSize: 16,
-    color: '#666',
+    color: theme.subText,
     marginBottom: 30,
     lineHeight: 24,
   },
@@ -2034,7 +2324,7 @@ const styles = StyleSheet.create({
   otpBoxValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: theme.primary,
     letterSpacing: 2,
   },
   otpInputRow: {
@@ -2044,11 +2334,11 @@ const styles = StyleSheet.create({
   otpBigInput: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: theme.text,
     letterSpacing: 10,
     textAlign: 'center',
     borderBottomWidth: 2,
-    borderBottomColor: '#2563eb',
+    borderBottomColor: theme.primary,
     width: '80%',
     paddingBottom: 10,
   },
@@ -2072,7 +2362,7 @@ const styles = StyleSheet.create({
     padding: 24,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
     marginTop: -30,
   },
   detailHeader: {
@@ -2083,7 +2373,7 @@ const styles = StyleSheet.create({
   detailName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: theme.text,
     marginBottom: 8,
   },
   detailLocBox: {
@@ -2092,7 +2382,7 @@ const styles = StyleSheet.create({
   },
   detailLocText: {
     fontSize: 14,
-    color: '#666',
+    color: theme.subText,
     marginLeft: 4,
   },
   detailRatingBox: {
@@ -2118,12 +2408,12 @@ const styles = StyleSheet.create({
   detailSectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: theme.text,
     marginBottom: 12,
   },
   detailDesc: {
     fontSize: 15,
-    color: '#444',
+    color: theme.subText,
     lineHeight: 24,
     marginBottom: 20,
   },
@@ -2135,7 +2425,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 20,
     paddingBottom: 40,
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -2144,26 +2434,26 @@ const styles = StyleSheet.create({
   },
   footerPriceLabel: {
     fontSize: 12,
-    color: '#666',
+    color: theme.subText,
   },
   footerPriceValue: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: theme.primary,
   },
   footerBookBtn: {
-    backgroundColor: '#2563eb',
+    backgroundColor: theme.primary,
     paddingHorizontal: 35,
     paddingVertical: 15,
     borderRadius: 15,
-    shadowColor: "#2563eb",
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
   footerBookBtnText: {
-    color: 'white',
+    color: theme.headerText,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -2177,7 +2467,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
   },
   galleryText: {
-    color: 'white',
+    color: theme.headerText,
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -2189,13 +2479,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#2563eb',
+    backgroundColor: theme.primary,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
   },
   itineraryDayText: {
-    color: 'white',
+    color: theme.headerText,
     fontWeight: 'bold',
   },
   itineraryContent: {
@@ -2206,7 +2496,7 @@ const styles = StyleSheet.create({
   itineraryTitle: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: theme.text,
     marginBottom: 10,
   },
   activityItem: {
@@ -2218,12 +2508,12 @@ const styles = StyleSheet.create({
   activityTime: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2563eb',
+    color: theme.primary,
     marginBottom: 2,
   },
   activityDesc: {
     fontSize: 14,
-    color: '#444',
+    color: theme.subText,
     lineHeight: 20,
   },
   // Floating Chat Button
@@ -2231,7 +2521,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 100,
     right: 20,
-    shadowColor: "#000",
+    shadowcolor: theme.text,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
@@ -2250,7 +2540,7 @@ const styles = StyleSheet.create({
     height: 100,
     paddingTop: 45,
     paddingHorizontal: 20,
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
@@ -2265,7 +2555,7 @@ const styles = StyleSheet.create({
   chatTargetName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: theme.text,
   },
   onlineStatus: {
     flexDirection: 'row',
@@ -2281,7 +2571,7 @@ const styles = StyleSheet.create({
   },
   onlineText: {
     fontSize: 12,
-    color: '#666',
+    color: theme.subText,
   },
   chatMessagesList: {
     padding: 20,
@@ -2293,7 +2583,7 @@ const styles = StyleSheet.create({
   },
   emptyChatText: {
     marginTop: 15,
-    color: '#999',
+    color: theme.subText,
     fontSize: 16,
   },
   msgContainer: {
@@ -2314,7 +2604,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   msgBubbleUser: {
-    backgroundColor: '#2563eb',
+    backgroundColor: theme.primary,
     borderBottomRightRadius: 5,
     borderTopRightRadius: 20,
   },
@@ -2328,14 +2618,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   msgTextUser: {
-    color: 'white',
+    color: theme.headerText,
   },
   msgTextAdmin: {
-    color: '#0f172a',
+    color: theme.text,
   },
   msgTime: {
     fontSize: 10,
-    color: '#999',
+    color: theme.subText,
     marginTop: 6,
   },
   chatInputRow: {
@@ -2343,7 +2633,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 15,
     paddingVertical: 10,
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
     borderTopWidth: 1,
     borderTopColor: '#f1f3f5',
     marginBottom: 10,
@@ -2353,7 +2643,7 @@ const styles = StyleSheet.create({
   },
   chatInputBox: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: theme.lightGray,
     borderRadius: 20,
     paddingHorizontal: 15,
     paddingVertical: 8,
@@ -2367,11 +2657,11 @@ const styles = StyleSheet.create({
   // Blog Styles
   blogCard: {
     flexDirection: 'row',
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
     borderRadius: 15,
     marginBottom: 15,
     overflow: 'hidden',
-    shadowColor: "#000",
+    shadowcolor: theme.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
@@ -2389,12 +2679,12 @@ const styles = StyleSheet.create({
   blogTitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: theme.text,
     marginBottom: 5,
   },
   blogAuthor: {
     fontSize: 12,
-    color: '#999',
+    color: theme.subText,
   },
   scrollContent: {
     paddingBottom: 20,
@@ -2402,16 +2692,16 @@ const styles = StyleSheet.create({
   emptyBookings: {
     alignItems: 'center',
     padding: 30,
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
     borderRadius: 15,
   },
   bookingCardShort: {
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
     borderRadius: 15,
     padding: 15,
     marginBottom: 12,
     elevation: 1,
-    shadowColor: '#000',
+    shadowcolor: theme.text,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -2429,7 +2719,7 @@ const styles = StyleSheet.create({
   bookingItemName: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.text,
     marginBottom: 10,
   },
   bookingCardFooter: {
@@ -2443,12 +2733,12 @@ const styles = StyleSheet.create({
   bookingPrice: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: theme.primary,
   },
   settingsItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: theme.bg,
     borderRadius: 15,
     padding: 12,
     marginBottom: 10,
@@ -2457,14 +2747,14 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   bookingInput: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: theme.lightGray,
     borderRadius: 12,
     paddingHorizontal: 15,
     height: 50,
     fontSize: 15,
-    color: '#333',
+    color: theme.text,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: theme.border,
   },
   smallToggle: {
     flex: 1,
@@ -2474,14 +2764,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   smallToggleActive: {
-    backgroundColor: '#2563eb',
+    backgroundColor: theme.primary,
   },
   smallToggleText: {
     fontSize: 12,
-    color: '#666',
+    color: theme.subText,
   },
   smallToggleTextActive: {
-    color: 'white',
+    color: theme.headerText,
     fontWeight: 'bold',
   },
   priceSummary: {
@@ -2491,6 +2781,6 @@ const styles = StyleSheet.create({
     marginTop: 25,
     paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: theme.border,
   },
 });

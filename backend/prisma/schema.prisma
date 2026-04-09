@@ -125,6 +125,10 @@ model Booking {
   updatedAt      DateTime  @updatedAt
   flightId       Int?
   hotelId        Int?
+  singleRooms    Int?
+  doubleRooms    Int?
+  economySeats   Int?
+  businessSeats  Int?
   user           User      @relation(fields: [userId], references: [id])
 }
 
