@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Card, Col, Row, Space, Tag, Typography, Spin, Divider, Timeline, DatePicker, message, Modal, Image } from 'antd';
+import { Button, Card, Col, Row, Space, Tag, Typography, Spin, Divider, Timeline, DatePicker, Modal, Image } from 'antd';
 import { EnvironmentOutlined, ClockCircleOutlined, StarFilled, ArrowLeftOutlined, CheckCircleOutlined, LockOutlined } from '@ant-design/icons';
 import { Plane, Hotel, Calendar } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -104,7 +104,16 @@ export default function TourDetailPage() {
 
     const handleBooking = () => {
         if (!session) {
-            message.error('Vui lòng đăng nhập để đặt tour!');
+            Modal.confirm({
+                title: 'Yêu cầu đăng nhập',
+                icon: <LockOutlined />,
+                content: 'Vui lòng đăng nhập để có thể tiến hành đặt tour và nhận các ưu đãi hấp dẫn.',
+                okText: 'Đăng nhập ngay',
+                cancelText: 'Quay lại',
+                onOk: () => {
+                    router.push(`/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
+                },
+            });
             return;
         }
         let url = `/order?type=TOUR&id=${tour?.id}`;

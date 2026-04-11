@@ -63,6 +63,7 @@ export default function Header() {
   );
 
   return (
+    <>
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${headerBg}`}>
       {/* Container shared between rows for alignment */}
       <div className="container mx-auto px-4 md:px-10 lg:px-20">
@@ -236,8 +237,9 @@ export default function Header() {
         </div>
 
       </div>
+    </header>
 
-      {/* Mobile Menu Backdrop */}
+      {/* Mobile Menu Backdrop - Outside header to avoid backdrop-blur inheritance */}
       <div 
         className={`lg:hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
           isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
@@ -245,7 +247,7 @@ export default function Header() {
         onClick={() => setIsMenuOpen(false)}
       />
 
-      {/* Mobile Menu Drawer Sidebar */}
+      {/* Mobile Menu Drawer Sidebar - Outside header to avoid backdrop-blur inheritance */}
       <div 
         className={`lg:hidden fixed top-0 right-0 bottom-0 w-[80%] max-w-[320px] z-[70] bg-slate-900 shadow-2xl transition-transform duration-300 ease-out transform ${
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
@@ -341,6 +343,6 @@ export default function Header() {
           </div>
         </div>
       </div>
-    </header>
+    </>
   );
 }

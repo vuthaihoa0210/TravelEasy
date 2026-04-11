@@ -5,10 +5,13 @@ import { useState } from 'react';
 import { Form, Input, Button, message, Row, Col } from 'antd';
 import { UserOutlined, LockOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { LogIn, KeyRound, ArrowRight } from 'lucide-react';
 
 export default function SignIn() {
   const [loading, setLoading] = useState(false);
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const onFinish = async (values: any) => {
     setLoading(true);
@@ -25,7 +28,7 @@ export default function SignIn() {
       message.error('Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu.');
     } else {
       message.success('Đăng nhập thành công!');
-      window.location.href = '/';
+      window.location.href = callbackUrl;
     }
   };
 

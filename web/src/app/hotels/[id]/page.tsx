@@ -88,7 +88,7 @@ export default function HotelDetailPage() {
                 okText: 'Đăng nhập ngay',
                 cancelText: 'Quay lại',
                 onOk: () => {
-                    router.push('/auth/signin');
+                    router.push(`/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
                 },
             });
             return;
