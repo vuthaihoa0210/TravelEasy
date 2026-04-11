@@ -1,14 +1,14 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { Form, Input, Button, message, Row, Col } from 'antd';
 import { UserOutlined, LockOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { LogIn, KeyRound, ArrowRight } from 'lucide-react';
 
-export default function SignIn() {
+function SignInContent() {
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
@@ -124,7 +124,7 @@ export default function SignIn() {
               </div>
 
               <div className="flex justify-end">
-                <Link href="/auth/forgot-password text-xs font-bold text-blue-600 hover:text-blue-700 tracking-widest uppercase" className="text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-[0.1em]">
+                <Link href="/auth/forgot-password" className="text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-[0.1em]">
                   Quên mật khẩu?
                 </Link>
               </div>
@@ -148,5 +148,13 @@ export default function SignIn() {
         </Col>
       </Row>
     </div>
+  );
+}
+
+export default function SignIn() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-white pt-28"><div className="text-slate-400">Đang tải...</div></div>}>
+      <SignInContent />
+    </Suspense>
   );
 }
