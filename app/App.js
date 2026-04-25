@@ -19,6 +19,7 @@ import {
   Modal,
   useColorScheme
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,8 +29,30 @@ const { width } = Dimensions.get('window');
 // Thay đổi URL này thành IP nội bộ của bạn nếu dùng thiết bị thật
 // Đối với Android Emulator: http://10.0.2.2:4000
 // Đối với Web/Trình duyệt trên laptop: http://localhost:4000
-const BACKEND_URL = 'http://192.168.1.5:4000';
+const BACKEND_URL = 'http://192.168.1.211:4000';
 
+const aiRules = [
+  { keywords: ['xin chào', 'hello', 'hi', 'chào', 'hey'], answer: 'Xin chào! 👋 Mình là trợ lý AI của **TravelEasy**. Mình có thể giúp bạn đặt vé, tìm tour, khách sạn hoặc tra cứu ưu đãi. Bạn cần hỗ trợ gì hôm nay?' },
+  { keywords: ['vé máy bay', 'vé bay', 'chuyến bay', 'flight', 'bay'], answer: '✈️ **Đặt vé máy bay tại TravelEasy:**\n- Hỗ trợ bay trong nước & quốc tế\n- Nhiều hãng bay: Vietnam Airlines, Vietjet, Bamboo...\n- Giá tốt, đặt nhanh, thanh toán an toàn\n\n👉 Chọn máy bay ở trang chủ để xem ngay!' },
+  { keywords: ['khách sạn', 'phòng', 'nghỉ', 'hotel', 'resort'], answer: '🏨 **Đặt phòng khách sạn tại TravelEasy:**\n- Hơn 1.200 khách sạn từ 2★ đến 5★\n- Khu vực trong nước & quốc tế\n- Đặt phòng tức thì, hủy linh hoạt\n\n👉 Quay lại trang chủ và chọn Khách sạn!' },
+  { keywords: ['tour', 'lịch trình', 'du lịch', 'tham quan'], answer: '🗺️ **Tour du lịch tại TravelEasy:**\n- Tour trong nước: Hà Nội, Đà Nẵng, Nha Trang, Phú Quốc...\n- Tour quốc tế: Singapore, Nhật Bản, Hàn Quốc, Châu Âu...\n- Lịch trình rõ ràng, hướng dẫn viên nhiệt tình\n\n👉 Bấm vào Tours để khám phá!' },
+  { keywords: ['voucher', 'mã giảm giá', 'ưu đãi', 'khuyến mãi', 'discount', 'coupon'], answer: '🎟️ **Ưu đãi & Voucher TravelEasy:**\n- **WELCOME10**: Giảm 10% cho đơn đầu tiên\n- **SUMMER2026**: Giảm 15% mùa hè\n- **TOUR500**: Giảm 500K cho tour từ 5 triệu\n- **FLYHIGH**: Giảm 5% vé máy bay' },
+  { keywords: ['đặt phòng', 'booking', 'đơn hàng', 'lịch sử'], answer: '📋 **Quản lý đặt chỗ:**\n- Xem lịch sử đặt chỗ tại trang **Trang Cá Nhân**\n- Trạng thái đơn: Chờ xác nhận → Đã xác nhận → Hoàn thành\n- Hỗ trợ hủy/thay đổi trong vòng 24h' },
+  { keywords: ['thanh toán', 'payment', 'trả tiền', 'chuyển khoản'], answer: '💳 **Thanh toán tại TravelEasy:**\n- Thanh toán online an toàn\n- Hỗ trợ thẻ ATM, VISA, MasterCard\n- Ví điện tử: MoMo, ZaloPay, VNPay\n- Giữ chỗ ngay, không cần trả trước toàn bộ' },
+  { keywords: ['đăng ký', 'tạo tài khoản', 'register'], answer: '📝 **Đăng ký tài khoản TravelEasy:**\n1. Chọn Đăng ký từ màn hình Welcome\n2. Nhập email và tạo mật khẩu\n3. Xác nhận mã OTP gửi về email\n4. Hoàn tất và bắt đầu đặt chỗ!' },
+  { keywords: ['đăng nhập', 'login', 'quên mật khẩu'], answer: '🔐 **Đăng nhập TravelEasy:**\n- Chọn Đăng nhập\n- Nhập email & mật khẩu đã đăng ký\nGặp vấn đề? Liên hệ **1800 6868** hoặc **info@traveleasy.vn**' },
+  { keywords: ['liên hệ', 'hỗ trợ', 'hotline', 'contact'], answer: '📞 **Liên hệ TravelEasy:**\n- 📧 Email: info@traveleasy.vn\n- ☎️ Hotline: **1800 6868** (miễn phí, 24/7)\n- 📍 Địa chỉ: Hà Nội, Việt Nam\n\nHoặc chuyển qua tab chat với nhân viên để được hỗ trợ ngay!' },
+  { keywords: ['giá', 'bao nhiêu', 'chi phí', 'phí', 'tiền'], answer: '💰 **Bảng giá tham khảo:**\n- 🏨 Khách sạn: từ **1.5 triệu/đêm**\n- 🗺️ Tour nội địa: từ **2 triệu/người**\n- 🗺️ Tour quốc tế: từ **8 triệu/người**\n- ✈️ Vé nội địa: từ **1 triệu/chiều**\n\nGiá thực tế phụ thuộc ngày đi, mùa vụ và số lượng người.' },
+  { keywords: ['cảm ơn', 'thanks', 'thank you', 'tuyệt', 'ok', 'được rồi'], answer: '😊 Rất vui khi được giúp bạn! Nếu cần thêm thông tin, đừng ngần ngại hỏi mình nhé. Chúc bạn có chuyến đi thật tuyệt vời! 🌟' },
+];
+
+function getBotResponse(text) {
+  const lower = text.toLowerCase();
+  for (const rule of aiRules) {
+    if (rule.keywords.some(kw => lower.includes(kw))) return rule.answer;
+  }
+  return '🤖 Xin lỗi, mình chưa hiểu câu hỏi của bạn. Bạn có thể hỏi về:\n- Đặt vé máy bay, khách sạn, tour\n- Ưu đãi & thanh toán\n\nHoặc chuyển sang tab "Nhân viên" để được hỗ trợ trực tiếp!';
+}
 
 const lightColors = {
   bg: '#ffffff',
@@ -65,7 +88,8 @@ const darkColors = {
 
 export default function App() {
   const scheme = useColorScheme();
-  const isDarkMode = scheme === 'dark';
+  const [manualTheme, setManualTheme] = useState('system'); // system, light, dark
+  const isDarkMode = manualTheme === 'system' ? scheme === 'dark' : manualTheme === 'dark';
   const theme = isDarkMode ? darkColors : lightColors;
   const styles = React.useMemo(() => createStyles(theme), [isDarkMode]);
 
@@ -102,15 +126,28 @@ export default function App() {
   const [replyTarget, setReplyTarget] = useState(null);
   const [replyContent, setReplyContent] = useState('');
   const [reviewedBookings, setReviewedBookings] = useState({});
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
   // Chat States
+  const [chatMode, setChatMode] = useState('ai'); // 'ai' or 'live'
   const [chatRoom, setChatRoom] = useState(null);
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
+  const [aiMessages, setAiMessages] = useState([
+    {
+      id: 1, role: 'bot',
+      content: 'Xin chào! 👋 Mình là TravelEasy AI — trợ lý du lịch thông minh của bạn. Mình có thể giúp bạn đặt vé, tìm tour, khách sạn và nhiều hơn nữa. Bạn cần gì hôm nay?',
+      createdAt: new Date().toISOString()
+    }
+  ]);
+  const [aiInput, setAiInput] = useState('');
+  const [aiTyping, setAiTyping] = useState(false);
+  const aiListRef = useRef(null);
   const socketRef = useRef(null);
 
   useEffect(() => {
-    if (screen === 'Chat' && chatRoom) {
+    if (screen === 'Chat' && chatMode === 'live' && chatRoom) {
       const socket = io(BACKEND_URL, { transports: ['websocket'] });
       socketRef.current = socket;
 
@@ -144,6 +181,7 @@ export default function App() {
   const [hotels, setHotels] = useState([]);
   const [flights, setFlights] = useState([]);
   const [blogs, setBlogs] = useState([]);
+  const [vouchers, setVouchers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Registration States
@@ -180,9 +218,14 @@ export default function App() {
     return () => backHandler.remove();
   }, [screen]);
 
+  // Clear search query on screen change
+  useEffect(() => {
+    setSearchQuery('');
+  }, [screen]);
+
   // Fetch Data on Load
   useEffect(() => {
-    if (screen === 'Home' || screen === 'Tours' || screen === 'Hotels' || screen === 'Flights') {
+    if (screen === 'Home' || screen === 'Tours' || screen === 'Hotels' || screen === 'Flights' || screen === 'Vouchers') {
       fetchData();
     }
     if (isLoggedIn && (screen === 'Profile' || screen === 'Home')) {
@@ -240,6 +283,13 @@ export default function App() {
         setBlogs(blogsData);
       } catch (e) {}
 
+      // Fetch vouchers
+      try {
+        const vouchersRes = await fetch(`${BACKEND_URL}/api/vouchers/available`);
+        const vouchersData = await vouchersRes.json();
+        if (Array.isArray(vouchersData)) setVouchers(vouchersData);
+      } catch (e) {}
+
       setTours(toursData);
       setHotels(hotelsData);
       setFlights(flightsData);
@@ -260,6 +310,27 @@ export default function App() {
     if (path.startsWith('http')) return path;
     // Nối thêm BACKEND_URL nếu là đường dẫn nội bộ (/images/...)
     return `${BACKEND_URL}${path}`;
+  };
+
+  const parseDuration = (duration) => {
+    if (!duration) return 1;
+    // Tìm con số trước chữ 'Đ' hoặc 'Đêm' (nights)
+    const nightMatch = duration.match(/(\d+)\s*Đ/i);
+    if (nightMatch) return parseInt(nightMatch[1]);
+    
+    // Nếu không thấy chữ Đ, tìm số trước chữ 'N' hoặc 'Ngày' (days)
+    const dayMatch = duration.match(/(\d+)\s*N/i);
+    if (dayMatch) {
+      const days = parseInt(dayMatch[1]);
+      return Math.max(0, days - 1); // 3 ngày thường là 2 đêm
+    }
+    return 1;
+  };
+
+  const addDaysToISO = (dateStr, days) => {
+    const date = new Date(dateStr);
+    date.setDate(date.getDate() + days);
+    return date.toISOString().split('T')[0];
   };
 
   const getGalleryImages = (mainImage, productId, category) => {
@@ -379,9 +450,14 @@ export default function App() {
     }
   };
 
-  const startChat = async () => {
+  const openChatMode = (mode) => {
+    setChatMode(mode);
+    setScreen('Chat');
+  };
+
+  const connectLiveChat = async () => {
     if (!isLoggedIn) {
-      Alert.alert('Tham gia Chat', 'Bạn cần đăng nhập để bắt đầu trò chuyện với nhân viên hỗ trợ.', [
+      Alert.alert('Tham gia Chat', 'Bạn cần đăng nhập để trò chuyện với nhân viên.', [
         { text: 'Để sau', style: 'cancel' },
         { text: 'Đăng nhập', onPress: () => setScreen('Login') }
       ]);
@@ -399,7 +475,6 @@ export default function App() {
       if (res.ok) {
         setChatRoom(data);
         setMessages(data.messages || []);
-        setScreen('Chat');
       }
     } catch (err) {
       console.log('Chat error:', err);
@@ -407,6 +482,43 @@ export default function App() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (chatMode === 'live' && screen === 'Chat' && !chatRoom && !loading) {
+      connectLiveChat();
+    }
+  }, [chatMode, screen]);
+
+  const sendAiMessage = async () => {
+    if (!aiInput.trim()) return;
+    const text = aiInput.trim();
+    const newUserMsg = { id: Date.now(), role: 'user', content: text, createdAt: new Date().toISOString() };
+    setAiMessages(prev => [...prev, newUserMsg]);
+    setAiInput('');
+    setAiTyping(true);
+
+    try {
+      const history = aiMessages.slice(-10).map(m => ({ role: m.role === 'user' ? 'user' : 'model', text: m.content }));
+      const res = await fetch(`${BACKEND_URL}/api/ai/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, history }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', content: data.answer || getBotResponse(text), createdAt: new Date().toISOString() }]);
+      } else {
+        setAiMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', content: getBotResponse(text), createdAt: new Date().toISOString() }]);
+      }
+    } catch {
+      setAiMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', content: getBotResponse(text), createdAt: new Date().toISOString() }]);
+    } finally {
+      setAiTyping(false);
+      setTimeout(() => aiListRef.current?.scrollToEnd({animated: true}), 100);
+    }
+  };
+
+  const startChat = () => openChatMode('ai');
 
   const sendMessage = () => {
     if (!chatInput.trim() || !chatRoom || !socketRef.current) return;
@@ -457,61 +569,130 @@ export default function App() {
     </View>
   );
 
+  const formatMarkdownToText = (text) => {
+    if (!text) return '';
+    return text.replace(/\*\*(.*?)\*\*/g, '$1');
+  };
+
   const renderChat = () => (
     <SafeAreaView style={styles.mainContainer}>
-      <View style={styles.chatHeader}>
-        <TouchableOpacity onPress={() => setScreen('Home')} style={styles.chatBack}>
-          <Ionicons name="arrow-back" size={24} color="#0f172a" />
-        </TouchableOpacity>
-        <View style={styles.chatTargetInfo}>
-          <Text style={styles.chatTargetName}>Hỗ trợ trực tuyến</Text>
-          <View style={styles.onlineStatus}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>Đang hoạt động</Text>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={{ backgroundColor: theme.primary, paddingTop: 10, paddingBottom: 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 15 }}>
+          <TouchableOpacity onPress={() => setScreen('Home')} style={{ padding: 5, marginRight: 15 }}>
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <View>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: 'white' }}>TravelEasy Support</Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>
+              {chatMode === 'ai' ? 'Trợ lý AI trực tuyến' : (chatRoom ? 'Nhân viên trực tuyến' : (isLoggedIn ? 'Đang kết nối...' : 'Chưa đăng nhập'))}
+            </Text>
           </View>
+        </View>
+        <View style={{ flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.1)' }}>
+          <TouchableOpacity style={[styles.chatTab, chatMode === 'ai' && styles.chatTabActive]} onPress={() => setChatMode('ai')}>
+            <Text style={[styles.chatTabTxt, chatMode === 'ai' && styles.chatTabTxtActive]}>🤖 AI Bot</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.chatTab, chatMode === 'live' && styles.chatTabActive]} onPress={() => setChatMode('live')}>
+            <Text style={[styles.chatTabTxt, chatMode === 'live' && styles.chatTabTxtActive]}>👨‍💼 Nhân viên</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.chatMessagesList} ref={(ref) => ref?.scrollToEnd({animated: true})}>
-        {messages.length === 0 ? (
-          <View style={styles.emptyChat}>
-             <Ionicons name="chatbubbles-outline" size={60} color="#ddd" />
-             <Text style={styles.emptyChatText}>Bắt đầu trò chuyện với chúng tôi!</Text>
-          </View>
-        ) : (
-          messages.map(msg => (
-            <View key={msg.id} style={[styles.msgContainer, msg.senderRole === 'USER' ? styles.msgUser : styles.msgAdmin]}>
-              <View style={[styles.msgBubble, msg.senderRole === 'USER' ? styles.msgBubbleUser : styles.msgBubbleAdmin]}>
-                <Text style={[styles.msgText, msg.senderRole === 'USER' ? styles.msgTextUser : styles.msgTextAdmin]}>
-                  {msg.content}
-                </Text>
+      {chatMode === 'ai' ? (
+        <>
+          <ScrollView contentContainerStyle={styles.chatMessagesList} ref={aiListRef}>
+            {aiMessages.map(msg => (
+              <View key={msg.id} style={[styles.msgContainer, msg.role === 'user' ? styles.msgUser : styles.msgAdmin]}>
+                {msg.role === 'bot' && <View style={styles.botAvatar}><Text>🤖</Text></View>}
+                <View style={[styles.msgBubble, msg.role === 'user' ? styles.msgBubbleUser : styles.msgBubbleAdmin]}>
+                  <Text style={[styles.msgText, msg.role === 'user' ? styles.msgTextUser : styles.msgTextAdmin]}>
+                    {formatMarkdownToText(msg.content)}
+                  </Text>
+                </View>
+                {msg.role === 'user' && <Text style={styles.msgTime}>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>}
               </View>
-              <Text style={styles.msgTime}>
-                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
+            ))}
+            {aiTyping && (
+              <View style={[styles.msgContainer, styles.msgAdmin]}>
+                <View style={styles.botAvatar}><Text>🤖</Text></View>
+                <View style={[styles.msgBubble, styles.msgBubbleAdmin]}>
+                  <Text style={styles.msgTextAdmin}>Đang gõ...</Text>
+                </View>
+              </View>
+            )}
+          </ScrollView>
+          <View style={styles.chatInputRow}>
+            <TextInput 
+              style={styles.chatInputBox}
+              placeholder="Hỏi AI bất kỳ điều gì..."
+              value={aiInput}
+              onChangeText={setAiInput}
+              multiline
+            />
+            <TouchableOpacity style={styles.chatSendBtn} onPress={sendAiMessage}>
+              <Ionicons name="send" size={22} color={aiInput.trim() ? theme.primary : "#ccc"} />
+            </TouchableOpacity>
+          </View>
+        </>
+      ) : (
+        <>
+          {!isLoggedIn ? (
+            <View style={styles.emptyChat}>
+               <Ionicons name="lock-closed-outline" size={60} color="#ddd" />
+               <Text style={styles.emptyChatText}>Vui lòng đăng nhập để chat với nhân viên.</Text>
+               <TouchableOpacity style={[styles.authSubmitBtn, {width: 200, marginTop: 20}]} onPress={() => setScreen('Login')}>
+                  <Text style={styles.authSubmitBtnText}>Đăng nhập ngay</Text>
+               </TouchableOpacity>
             </View>
-          ))
-        )}
-      </ScrollView>
-
-      <View style={styles.chatInputRow}>
-        <TouchableOpacity style={styles.chatAttachBtn}><Ionicons name="add-circle-outline" size={26} color={theme.primary} /></TouchableOpacity>
-        <TextInput 
-          style={styles.chatInputBox}
-          placeholder="Nhập tin nhắn..."
-          value={chatInput}
-          onChangeText={setChatInput}
-          multiline
-        />
-        <TouchableOpacity style={styles.chatSendBtn} onPress={sendMessage}>
-          <Ionicons name="send" size={22} color={chatInput.trim() ? theme.primary : "#ccc"} />
-        </TouchableOpacity>
-      </View>
+          ) : (
+            <>
+              <ScrollView contentContainerStyle={styles.chatMessagesList} ref={(ref) => ref?.scrollToEnd({animated: true})}>
+                {messages.length === 0 ? (
+                  <View style={styles.emptyChat}>
+                     <Ionicons name="chatbubbles-outline" size={60} color="#ddd" />
+                     <Text style={styles.emptyChatText}>Hội thoại đã bắt đầu!</Text>
+                  </View>
+                ) : (
+                  messages.map(msg => (
+                    <View key={msg.id} style={[styles.msgContainer, msg.senderRole === 'USER' ? styles.msgUser : styles.msgAdmin]}>
+                      {msg.senderRole !== 'USER' && <View style={styles.botAvatar}><Text>👨‍💼</Text></View>}
+                      <View style={[styles.msgBubble, msg.senderRole === 'USER' ? styles.msgBubbleUser : styles.msgBubbleAdmin]}>
+                        <Text style={[styles.msgText, msg.senderRole === 'USER' ? styles.msgTextUser : styles.msgTextAdmin]}>
+                          {msg.content}
+                        </Text>
+                      </View>
+                      <Text style={styles.msgTime}>
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+              <View style={styles.chatInputRow}>
+                <TouchableOpacity style={styles.chatAttachBtn}><Ionicons name="add-circle-outline" size={26} color={theme.primary} /></TouchableOpacity>
+                <TextInput 
+                  style={styles.chatInputBox}
+                  placeholder="Nhắn tin cho nhân viên..."
+                  value={chatInput}
+                  onChangeText={setChatInput}
+                  multiline
+                />
+                <TouchableOpacity style={styles.chatSendBtn} onPress={sendMessage}>
+                  <Ionicons name="send" size={22} color={chatInput.trim() ? theme.primary : "#ccc"} />
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </>
+      )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 
   const renderRegister = () => (
     <SafeAreaView style={styles.registerContainer}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <TouchableOpacity style={styles.backButton} onPress={() => {
           if (currentStep > 0) {
@@ -619,20 +800,30 @@ export default function App() {
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 
   const renderLogin = () => (
-    <SafeAreaView style={styles.registerContainer}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <TouchableOpacity style={styles.backButton} onPress={() => setScreen('Welcome')}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
+    <SafeAreaView style={styles.mainContainer}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} bounces={false}>
+        {/* Header Banner */}
+        <LinearGradient colors={[theme.primary, '#1d4ed8']} style={{ paddingTop: 60, paddingBottom: 40, paddingHorizontal: 30, borderBottomLeftRadius: 40, borderBottomRightRadius: 40 }}>
+          <TouchableOpacity onPress={() => setScreen('Welcome')} style={{ marginBottom: 25 }}>
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <View style={{ alignItems: 'center' }}>
+            <View style={{ width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginBottom: 15 }}>
+              <Ionicons name="person" size={35} color="white" />
+            </View>
+            <Text style={{ fontSize: 28, fontWeight: 'bold', color: 'white', marginBottom: 5 }}>Đăng Nhập</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center' }}>Sẵn sàng để tiếp tục hành trình của bạn</Text>
+          </View>
+        </LinearGradient>
 
-        <Text style={styles.title}>Đăng Nhập</Text>
-        <Text style={styles.subtitle}>Sẵn sàng để tiếp tục hành trình của bạn</Text>
-
-        <View style={styles.form}>
+        {/* Form Section */}
+        <View style={{ paddingHorizontal: 24, paddingTop: 35 }}>
           <View style={styles.inputWrapper}>
              <Text style={styles.inputLabel}>Email</Text>
              <View style={styles.inputBox}>
@@ -640,6 +831,7 @@ export default function App() {
                 <TextInput 
                   style={styles.input} 
                   placeholder="Email của bạn" 
+                  placeholderTextColor="#999"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   value={loginData.email}
@@ -655,6 +847,7 @@ export default function App() {
                 <TextInput 
                   style={styles.input} 
                   placeholder="Mật khẩu của bạn" 
+                  placeholderTextColor="#999"
                   secureTextEntry
                   value={loginData.password}
                   onChangeText={(text) => setLoginData({...loginData, password: text})}
@@ -682,6 +875,7 @@ export default function App() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 
@@ -767,17 +961,28 @@ export default function App() {
             {[
               { icon: 'notifications-outline', label: 'Thông báo', detail: 'Đã bật' },
               { icon: 'shield-checkmark-outline', label: 'Bảo mật', detail: 'Bình thường' },
+              { icon: isDarkMode ? 'sunny-outline' : 'moon-outline', label: 'Giao diện', detail: manualTheme === 'system' ? 'Tự động' : (manualTheme === 'dark' ? 'Tối' : 'Sáng'), action: 'theme' },
               { icon: 'help-circle-outline', label: 'Trung tâm trợ giúp', detail: '' },
             ].map((item, idx) => (
-              <TouchableOpacity key={idx} style={styles.settingsItem}>
+              <TouchableOpacity key={idx} style={styles.settingsItem} onPress={() => {
+                if (item.action === 'theme') {
+                  if (manualTheme === 'system') setManualTheme('dark');
+                  else if (manualTheme === 'dark') setManualTheme('light');
+                  else setManualTheme('system');
+                }
+              }}>
                 <View style={[styles.categoryIconCircle, { width: 40, height: 40, marginBottom: 0 }]}>
                   <Ionicons name={item.icon} size={20} color={theme.primary} />
                 </View>
                 <View style={{ flex: 1, marginLeft: 15, justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 15, fontWeight: '600' }}>{item.label}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>{item.label}</Text>
                   {item.detail ? <Text style={{ fontSize: 12, color: theme.subText }}>{item.detail}</Text> : null}
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#ccc" />
+                {item.action === 'theme' ? (
+                  <Ionicons name="color-palette-outline" size={18} color={theme.primary} />
+                ) : (
+                  <Ionicons name="chevron-forward" size={18} color="#ccc" />
+                )}
               </TouchableOpacity>
             ))}
 
@@ -916,6 +1121,7 @@ export default function App() {
 
     return (
       <SafeAreaView style={styles.mainContainer}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.screenHeader}>
           <TouchableOpacity onPress={() => setScreen(type + 'Detail')} style={{ marginBottom: 10 }}>
             <Ionicons name="arrow-back" size={24} color="#0f172a" />
@@ -1032,23 +1238,58 @@ export default function App() {
 
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>{isFlight ? 'Ngày bay' : 'Ngày bắt đầu'}</Text>
-              <TextInput 
+              <TouchableOpacity 
                 style={styles.bookingInput} 
-                placeholder="YYYY-MM-DD"
-                value={bookingForm.startDate}
-                onChangeText={t => setBookingForm({...bookingForm, startDate: t})}
-              />
+                onPress={() => setShowStartDatePicker(true)}
+              >
+                <Text style={{ color: theme.text }}>{bookingForm.startDate}</Text>
+              </TouchableOpacity>
+              {showStartDatePicker && (
+                <DateTimePicker
+                  value={new Date(bookingForm.startDate)}
+                  mode="date"
+                  display="default"
+                  minimumDate={new Date()}
+                  onChange={(event, selectedDate) => {
+                    setShowStartDatePicker(false);
+                    if (selectedDate) {
+                      const dateStr = selectedDate.toISOString().split('T')[0];
+                      let nextEndDate = bookingForm.endDate;
+                      if (isTour) {
+                        const tourNights = parseDuration(item.duration);
+                        nextEndDate = addDaysToISO(dateStr, tourNights);
+                      }
+                      setBookingForm({ ...bookingForm, startDate: dateStr, endDate: nextEndDate });
+                    }
+                  }}
+                />
+              )}
             </View>
 
             {(isHotel || isTour) && (
               <View style={styles.inputWrapper}>
                 <Text style={styles.inputLabel}>Ngày kết thúc</Text>
-                <TextInput 
-                  style={styles.bookingInput} 
-                  placeholder="YYYY-MM-DD"
-                  value={bookingForm.endDate}
-                  onChangeText={t => setBookingForm({...bookingForm, endDate: t})}
-                />
+                <TouchableOpacity 
+                  style={[styles.bookingInput, isTour && { backgroundColor: theme.lightGray, opacity: 0.6 }]} 
+                  disabled={isTour}
+                  onPress={() => setShowEndDatePicker(true)}
+                >
+                  <Text style={{ color: isTour ? theme.subText : theme.text }}>{bookingForm.endDate}</Text>
+                </TouchableOpacity>
+                {showEndDatePicker && !isTour && (
+                  <DateTimePicker
+                    value={new Date(bookingForm.endDate)}
+                    mode="date"
+                    display="default"
+                    minimumDate={new Date(bookingForm.startDate)}
+                    onChange={(event, selectedDate) => {
+                      setShowEndDatePicker(false);
+                      if (selectedDate) {
+                        setBookingForm({ ...bookingForm, endDate: selectedDate.toISOString().split('T')[0] });
+                      }
+                    }}
+                  />
+                )}
               </View>
             )}
 
@@ -1066,6 +1307,7 @@ export default function App() {
             </TouchableOpacity>
           </View>
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   };
@@ -1141,7 +1383,7 @@ export default function App() {
               { id: 'Tours', icon: 'map-outline', label: 'Tours', color: '#52c41a' },
               { id: 'Hotels', icon: 'business-outline', label: 'Khách sạn', color: '#fa8c16' },
               { id: 'Flights', icon: 'airplane-outline', label: 'Máy bay', color: theme.primary },
-              { id: 'Chat', icon: 'chatbubbles-outline', label: 'Hỗ trợ', color: '#722ed1' },
+              { id: 'Vouchers', icon: 'gift-outline', label: 'Ưu đãi', color: '#f5222d' },
             ].map(cat => (
               <TouchableOpacity key={cat.id} style={styles.categoryItem} onPress={() => cat.id === 'Chat' ? startChat() : setScreen(cat.id)}>
                 <View style={[styles.categoryIconCircle, { backgroundColor: cat.color + '15' }]}>
@@ -1223,18 +1465,20 @@ export default function App() {
             </TouchableOpacity>
           </View>
           
-          {(blogs.length > 0 ? blogs.slice(0, 5) : [
-            { id: 1, title: 'Kinh nghiệm du lịch Đà Lạt mùa sương', author: 'TravelEasy', image: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?w=500' },
-            { id: 2, title: 'Top 10 bãi biển đẹp nhất Việt Nam 2024', author: 'Team Travel', image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500' }
-          ]).map(blog => (
-            <TouchableOpacity key={blog.id} style={styles.blogCard}>
-              <Image source={{ uri: blog.images && blog.images[0] ? getImageUrl(blog.images[0]) : getImageUrl(blog.image) }} style={styles.blogImage} />
-              <View style={styles.blogInfo}>
-                <Text style={styles.blogTitle} numberOfLines={2}>{blog.title}</Text>
-                <Text style={styles.blogAuthor}>Bởi {blog.author} • {new Date(blog.createdAt || Date.now()).toLocaleDateString()}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+          <View style={{ paddingHorizontal: 24 }}>
+            {(blogs.length > 0 ? blogs.slice(0, 5) : [
+              { id: 1, title: 'Kinh nghiệm du lịch Đà Lạt mùa sương', author: 'TravelEasy', image: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?w=500' },
+              { id: 2, title: 'Top 10 bãi biển đẹp nhất Việt Nam 2024', author: 'Team Travel', image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500' }
+            ]).map(blog => (
+              <TouchableOpacity key={blog.id} style={styles.blogCard}>
+                <Image source={{ uri: blog.images && blog.images[0] ? getImageUrl(blog.images[0]) : getImageUrl(blog.image) }} style={styles.blogImage} />
+                <View style={styles.blogInfo}>
+                  <Text style={styles.blogTitle} numberOfLines={2}>{blog.title}</Text>
+                  <Text style={styles.blogAuthor}>Bởi {blog.author} • {new Date(blog.createdAt || Date.now()).toLocaleDateString()}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </ScrollView>
       
@@ -1245,9 +1489,24 @@ export default function App() {
 
   const renderTours = () => (
     <SafeAreaView style={styles.mainContainer}>
-      <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>Tours Du Lịch</Text>
-      </View>
+      <LinearGradient colors={[theme.primary, '#1d4ed8']} style={[styles.homeHeader, { paddingTop: 40, paddingBottom: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, marginBottom: 15 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+          <TouchableOpacity onPress={() => setScreen('Home')} style={{ marginRight: 15 }}>
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: 'white' }}>Tours Du Lịch</Text>
+        </View>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search-outline" size={20} color="#999" />
+          <TextInput 
+            placeholder="Tìm kiếm tour..." 
+            style={styles.searchInput} 
+            placeholderTextColor="#999" 
+            value={searchQuery}
+            onChangeText={(text) => setSearchQuery(text)}
+          />
+        </View>
+      </LinearGradient>
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -1269,9 +1528,24 @@ export default function App() {
 
   const renderHotels = () => (
     <SafeAreaView style={styles.mainContainer}>
-      <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>Khách Sạn</Text>
-      </View>
+      <LinearGradient colors={[theme.primary, '#1d4ed8']} style={[styles.homeHeader, { paddingTop: 40, paddingBottom: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, marginBottom: 15 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+          <TouchableOpacity onPress={() => setScreen('Home')} style={{ marginRight: 15 }}>
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: 'white' }}>Khách Sạn</Text>
+        </View>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search-outline" size={20} color="#999" />
+          <TextInput 
+            placeholder="Tìm kiếm khách sạn..." 
+            style={styles.searchInput} 
+            placeholderTextColor="#999" 
+            value={searchQuery}
+            onChangeText={(text) => setSearchQuery(text)}
+          />
+        </View>
+      </LinearGradient>
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -1571,14 +1845,23 @@ export default function App() {
                   ]
                 );
               } else {
+                const tourNights = type === 'Tour' ? parseDuration(item.duration) : 1;
+                const startDateStr = new Date().toISOString().split('T')[0];
+                const endDateStr = type === 'Tour' 
+                  ? addDaysToISO(startDateStr, tourNights)
+                  : addDaysToISO(startDateStr, 1);
+
                 setBookingForm({
                   customerName: userData.name || '',
                   customerPhone: '',
                   totalPeople: 1,
+                  singleRooms: type === 'Tour' ? 1 : 0,
                   doubleRooms: 0,
+                  economySeats: type === 'Tour' ? 1 : 0,
+                  businessSeats: 0,
                   seatClass: 'ECONOMY',
-                  startDate: new Date().toISOString().split('T')[0],
-                  endDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+                  startDate: startDateStr,
+                  endDate: endDateStr,
                   selectedHotelId: type === 'Tour' ? selectedTourHotel : null,
                   selectedFlightId: type === 'Tour' ? selectedTourFlight : null,
                 });
@@ -1648,11 +1931,26 @@ export default function App() {
 
   const renderFlights = () => (
     <SafeAreaView style={styles.mainContainer}>
-      <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>Vé Máy Bay</Text>
-      </View>
+      <LinearGradient colors={[theme.primary, '#1d4ed8']} style={[styles.homeHeader, { paddingTop: 40, paddingBottom: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, marginBottom: 15 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+          <TouchableOpacity onPress={() => setScreen('Home')} style={{ marginRight: 15 }}>
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: 'white' }}>Vé Máy Bay</Text>
+        </View>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search-outline" size={20} color="#999" />
+          <TextInput 
+            placeholder="Tìm kiếm vé máy bay..." 
+            style={styles.searchInput} 
+            placeholderTextColor="#999" 
+            value={searchQuery}
+            onChangeText={(text) => setSearchQuery(text)}
+          />
+        </View>
+      </LinearGradient>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {flights.map(flight => (
+        {(searchQuery ? flights.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()) || f.location?.toLowerCase().includes(searchQuery.toLowerCase()) || f.code?.toLowerCase().includes(searchQuery.toLowerCase())) : flights).map(flight => (
           <TouchableOpacity key={flight.id} style={styles.verticalCard} onPress={() => { setSelectedItem(flight); setScreen('FlightDetail'); }}>
             <View style={[styles.verticalCardInfo, { paddingLeft: 15 }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -1668,6 +1966,69 @@ export default function App() {
         <View style={{ height: 100 }} />
       </ScrollView>
       {renderBottomTabs()}
+    </SafeAreaView>
+  );
+
+  const renderVouchers = () => (
+    <SafeAreaView style={styles.mainContainer}>
+      <LinearGradient colors={[theme.primary, '#1d4ed8']} style={[styles.homeHeader, { paddingTop: 40, paddingBottom: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, marginBottom: 15 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+          <TouchableOpacity onPress={() => setScreen('Home')} style={{ marginRight: 15 }}>
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: 'white' }}>Kho Ưu Đãi</Text>
+        </View>
+      </LinearGradient>
+      
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {vouchers.length === 0 ? (
+          <View style={styles.emptyChat}>
+             <Ionicons name="gift-outline" size={60} color="#ddd" />
+             <Text style={styles.emptyChatText}>Hiện chưa có ưu đãi nào</Text>
+          </View>
+        ) : (
+          vouchers.map(v => (
+            <View key={v.id} style={{ 
+              backgroundColor: theme.cardBg, 
+              borderRadius: 12, 
+              marginHorizontal: 20, 
+              marginBottom: 15, 
+              padding: 15,
+              borderWidth: 1,
+              borderColor: theme.border,
+              elevation: 2 
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ backgroundColor: '#fff7e6', padding: 8, borderRadius: 8, marginRight: 10 }}>
+                    <Ionicons name={v.type === 'PERCENT' ? "pricetag-outline" : "cash-outline"} size={20} color="#fa8c16" />
+                  </View>
+                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.text }}>{v.code}</Text>
+                </View>
+                <View style={{ backgroundColor: '#e6f7ff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
+                  <Text style={{ fontSize: 10, color: '#1890ff', fontWeight: 'bold' }}>{v.category === 'HOTEL' ? 'KHÁCH SẠN' : (v.category === 'FLIGHT' ? 'CHUYẾN BAY' : (v.category === 'TOUR' ? 'TOUR' : 'TẤT CẢ'))}</Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 16, color: '#ff4d4f', fontWeight: 'bold', marginBottom: 5 }}>
+                Giảm {v.type === 'PERCENT' ? `${v.value}%` : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v.value)}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.subText }}>Đơn tối thiểu: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v.minOrderValue)}</Text>
+              {v.maxDiscount && <Text style={{ fontSize: 12, color: theme.subText }}>Giảm tối đa: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v.maxDiscount)}</Text>}
+              <View style={{ height: 1, backgroundColor: theme.border, marginVertical: 10 }} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 12, color: theme.subText }}><Ionicons name="calendar-outline" size={12} /> HSD: {new Date(v.endDate).toLocaleDateString()}</Text>
+                <TouchableOpacity 
+                   style={{ backgroundColor: theme.primary, paddingHorizontal: 15, paddingVertical: 6, borderRadius: 15 }} 
+                   onPress={() => setScreen(v.category === 'HOTEL' ? 'Hotels' : (v.category === 'FLIGHT' ? 'Flights' : (v.category === 'TOUR' ? 'Tours' : 'Home')))}
+                >
+                  <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>Dùng ngay</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))
+        )}
+        <View style={{ height: 100 }} />
+      </ScrollView>
     </SafeAreaView>
   );
 
@@ -1897,6 +2258,7 @@ export default function App() {
       case 'Tours': return renderTours();
       case 'Hotels': return renderHotels();
       case 'Flights': return renderFlights();
+      case 'Vouchers': return renderVouchers();
       case 'TourDetail': return renderDetail(selectedItem, 'Tour');
       case 'HotelDetail': return renderDetail(selectedItem, 'Hotel');
       case 'FlightDetail': return renderDetail(selectedItem, 'Flight');
@@ -1914,6 +2276,14 @@ export default function App() {
   return (
     <SafeAreaProvider>
       {renderContent()}
+      {(screen !== 'Chat' && screen !== 'Welcome' && screen !== 'Login' && screen !== 'Register') && (
+        <TouchableOpacity
+          style={styles.floatingChatBtn}
+          onPress={() => openChatMode('ai')}
+        >
+          <Ionicons name="chatbubbles" size={28} color="white" />
+        </TouchableOpacity>
+      )}
     </SafeAreaProvider>
   );
 }
@@ -2783,4 +3153,26 @@ const createStyles = (theme) => StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.border,
   },
+  floatingChatBtn: {
+    position: 'absolute',
+    bottom: 95,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: theme.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 999
+  },
+  chatTab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  chatTabActive: { borderBottomWidth: 3, borderBottomColor: 'white' },
+  chatTabTxt: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
+  chatTabTxtActive: { color: 'white', fontWeight: 'bold' },
+  botAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', marginRight: 8, alignSelf: 'flex-end', elevation: 1 },
 });

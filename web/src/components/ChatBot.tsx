@@ -276,31 +276,44 @@ export default function ChatBot() {
     if (open && mode === 'live') setLiveUnread(0);
   }, [open, mode]);
 
-  // ── AI send (Ngon ngữ ngố ngố ban đầu) ──
-  const sendAi = (text: string) => {
+  // ── AI send (calls backend API with Gemini + smart fallback) ──
+  const sendAi = async (text: string) => {
     if (!text.trim()) return;
-    const userMsg: Message = { id: Date.now(), role: 'user', text: text.trim(), time: getTime() };
+    const trimmed = text.trim();
+    const userMsg: Message = { id: Date.now(), role: 'user', text: trimmed, time: getTime() };
     setAiMessages(prev => [...prev, userMsg]);
     setAiInput('');
     setTyping(true);
 
-    setTimeout(() => {
-      let botText = "Chào bạn! Mình có thể giúp gì cho bạn về các tour du lịch, vé máy bay hay khách sạn không?";
-      const lower = text.toLowerCase();
-      
-      if (lower.includes("tour")) {
-        botText = "Hiện TravelEasy đang có rất nhiều tour khuyến mãi hấp dẫn. Bạn có thể xem tại mục [tour du lịch](/tours) nhé!";
-      } else if (lower.includes("vé") || lower.includes("máy bay")) {
-        botText = "Vé máy bay của chúng tôi luôn có giá cạnh tranh nhất. Bạn kiểm tra tại mục [vé máy bay](/flights) nha.";
-      } else if (lower.includes("khách sạn")) {
-        botText = "Hệ thống có hơn 1000 khách sạn liên kết, xem tại [khách sạn](/hotels) bạn nhé!";
-      } else if (lower.includes("liên hệ") || lower.includes("gặp người")) {
-        botText = "Dạ, để gặp nhân viên hỗ trợ, bạn vui lòng chuyển sang tab 'Trực tuyến' phía trên nhé!";
-      }
+    try {
+      // Build conversation history for context
+      const history = aiMessages
+        .filter(m => m.role === 'user' || m.role === 'bot')
+        .slice(-10) // Last 10 messages for context
+        .map(m => ({ role: m.role === 'user' ? 'user' : 'model', text: m.text }));
 
+      const res = await fetch(`${BACKEND}/api/ai/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: trimmed, history }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const botText = data.answer || getBotResponse(trimmed);
+        setAiMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', text: botText, time: getTime() }]);
+      } else {
+        // API error → use local fallback
+        const botText = getBotResponse(trimmed);
+        setAiMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', text: botText, time: getTime() }]);
+      }
+    } catch {
+      // Network error → use local fallback
+      const botText = getBotResponse(trimmed);
       setAiMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', text: botText, time: getTime() }]);
+    } finally {
       setTyping(false);
-    }, 800);
+    }
   };
 
   // ── Live send ──

@@ -367,6 +367,7 @@ export default function TourDetailPage() {
                 footer={null}
                 width={760}
                 centered
+                zIndex={900}
                 styles={{ body: { padding: 0 } }}
                 className="overflow-hidden rounded-3xl"
             >
@@ -374,12 +375,12 @@ export default function TourDetailPage() {
                     <div className="flex flex-col">
                         {/* Image */}
                         <div className="h-56 md:h-72 relative overflow-hidden rounded-t-3xl bg-slate-100">
-                            <Image.PreviewGroup>
+                            <Image.PreviewGroup preview={{ zIndex: 9999 }}>
                                 <div className="absolute inset-0 w-full h-full [&>.ant-image]:w-full [&>.ant-image]:h-full [&_img]:object-cover [&_img]:w-full [&_img]:h-full">
                                     <Image
                                         src={`https://picsum.photos/seed/${detailType}-${detailItem.id}-0/1200/800`}
                                         alt={detailItem.name}
-                                        preview={{ cover: <span className="text-white text-sm font-bold drop-shadow-md">🔍 Xem tất cả ảnh</span> }}
+                                        preview={{ cover: <span className="text-white text-sm font-bold drop-shadow-md">🔍 Xem tất cả ảnh</span>, zIndex: 9999 }}
                                     />
                                 </div>
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
@@ -405,7 +406,7 @@ export default function TourDetailPage() {
                                             <Image
                                                 src={`https://picsum.photos/seed/${detailType}-${detailItem.id}-${i}/800/500`}
                                                 alt=""
-                                                preview={{ mask: false }}
+                                                preview={{ mask: false, zIndex: 9999 }}
                                             />
                                         </div>
                                     ))}
@@ -415,6 +416,7 @@ export default function TourDetailPage() {
                                             <Image
                                                 key={i}
                                                 src={`https://picsum.photos/seed/${detailType}-${detailItem.id}-${i}/1200/800`}
+                                                preview={{ zIndex: 9999 }}
                                             />
                                         ))}
                                     </div>

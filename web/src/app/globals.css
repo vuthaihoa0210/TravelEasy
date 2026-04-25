@@ -206,3 +206,10 @@ input[type="reset"],
 .ant-modal-wrap {
   z-index: 9999 !important;
 }
+
+/* Ensure Image preview is always above Modal */
+.ant-image-preview-root,
+.ant-image-preview-mask,
+.ant-image-preview-wrap {
+  z-index: 99999 !important;
+}
