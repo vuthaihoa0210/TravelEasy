@@ -208,8 +208,6 @@ input[type="reset"],
 }
 
 /* Ensure Image preview is always above Modal */
-.ant-image-preview-root,
-.ant-image-preview-mask,
-.ant-image-preview-wrap {
+.ant-image-preview-root {
   z-index: 99999 !important;
 }
