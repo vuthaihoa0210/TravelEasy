@@ -1,15 +1,15 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   Card, Avatar, Typography, Button, Descriptions, Tag, Spin,
-  Tabs, Empty, Row, Col, Statistic, Badge, Modal
+  Tabs, Empty, Row, Col, Statistic, Badge, Modal, Form, Input, message
 } from 'antd';
 import {
   UserOutlined, MailOutlined, CrownOutlined, CalendarOutlined,
-  LogoutOutlined, ShoppingOutlined, GiftOutlined,
+  LogoutOutlined, ShoppingOutlined, GiftOutlined, LockOutlined
 } from '@ant-design/icons';
 import Link from 'next/link';
 
@@ -65,10 +65,75 @@ const typeIcon: Record<string, string> = {
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'bookings';
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
+  const [form] = Form.useForm();
+
+  const handleChangePassword = async (values: any) => {
+    setChangingPassword(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/auth/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: (session?.user as any)?.email,
+          oldPassword: values.oldPassword,
+          newPassword: values.newPassword,
+        }),
+      });
+
+      let data: any = {};
+      try { data = await res.json(); } catch { }
+
+      if (res.ok) {
+        message.success('Đổi mật khẩu thành công!');
+        form.resetFields();
+      } else {
+        message.error(data.error || 'Có lỗi xảy ra, vui lòng thử lại sau');
+      }
+    } catch (error) {
+      message.error('Lỗi kết nối đến máy chủ');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const handlePayment = async () => {
+    if (!selectedBooking) return;
+    setPaying(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/bookings/${selectedBooking.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'PAID' }),
+      });
+
+      if (res.ok) {
+        message.success('Thanh toán thành công qua cổng giả lập!');
+        setIsPaymentModalVisible(false);
+        setIsModalVisible(false);
+        
+        // Cập nhật state cục bộ thay vì reload trang
+        setBookings(prev => prev.map(b => 
+          b.id === selectedBooking.id ? { ...b, status: 'PAID' as any } : b
+        ));
+      } else {
+        message.error('Thanh toán thất bại');
+      }
+    } catch (error) {
+      message.error('Lỗi kết nối đến máy chủ');
+    } finally {
+      setPaying(false);
+    }
+  };
 
   const handleBookingClick = (b: Booking) => {
     setSelectedBooking(b);
@@ -187,6 +252,61 @@ export default function ProfilePage() {
         </div>
       ),
     },
+    {
+      key: 'security',
+      label: <span><LockOutlined /> Đổi mật khẩu</span>,
+      children: (
+        <div style={{ padding: '24px 0', maxWidth: 500 }}>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleChangePassword}
+            size="large"
+          >
+            <Form.Item
+              label="Mật khẩu cũ"
+              name="oldPassword"
+              rules={[{ required: true, message: 'Vui lòng nhập mật khẩu cũ!' }]}
+            >
+              <Input.Password placeholder="Nhập mật khẩu hiện tại" />
+            </Form.Item>
+            <Form.Item
+              label="Mật khẩu mới"
+              name="newPassword"
+              rules={[
+                { required: true, message: 'Vui lòng nhập mật khẩu mới!' },
+                { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' }
+              ]}
+            >
+              <Input.Password placeholder="Nhập mật khẩu mới" />
+            </Form.Item>
+            <Form.Item
+              label="Xác nhận mật khẩu mới"
+              name="confirmPassword"
+              dependencies={['newPassword']}
+              rules={[
+                { required: true, message: 'Vui lòng xác nhận mật khẩu mới!' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('newPassword') === value) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(new Error('Mật khẩu xác nhận không khớp!'));
+                  },
+                }),
+              ]}
+            >
+              <Input.Password placeholder="Xác nhận mật khẩu mới" />
+            </Form.Item>
+            <Form.Item>
+              <Button type="primary" htmlType="submit" loading={changingPassword}>
+                Đổi mật khẩu
+              </Button>
+            </Form.Item>
+          </Form>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -274,7 +394,12 @@ export default function ProfilePage() {
 
       {/* Bookings & Vouchers tabs */}
       <Card style={{ borderRadius: 16 }}>
-        <Tabs key={bookings.length} items={tabItems} size="large" />
+        <Tabs 
+          activeKey={activeTab} 
+          onChange={(key) => setActiveTab(key)} 
+          items={tabItems} 
+          size="large" 
+        />
       </Card>
 
       <Modal
@@ -282,9 +407,20 @@ export default function ProfilePage() {
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={[
-          <Button key="close" onClick={() => setIsModalVisible(false)} type="primary">
+          <Button key="close" onClick={() => setIsModalVisible(false)}>
             Đóng
           </Button>,
+          selectedBooking?.status === 'CONFIRMED' && (
+            <Button 
+              key="pay" 
+              type="primary" 
+              loading={paying} 
+              onClick={() => setIsPaymentModalVisible(true)}
+              style={{ background: '#52c41a', borderColor: '#52c41a' }}
+            >
+              Thanh toán ngay
+            </Button>
+          )
         ]}
         width={600}
         centered
@@ -368,6 +504,73 @@ export default function ProfilePage() {
             </Descriptions>
           </>
         )}
+      </Modal>
+
+      {/* Payment QR Modal */}
+      <Modal
+        title={<span><ShoppingOutlined /> Quét mã QR để thanh toán</span>}
+        open={isPaymentModalVisible}
+        onCancel={() => setIsPaymentModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setIsPaymentModalVisible(false)}>
+            Hủy bỏ
+          </Button>,
+          <Button 
+            key="confirm" 
+            type="primary" 
+            loading={paying} 
+            onClick={handlePayment}
+            style={{ background: '#52c41a', borderColor: '#52c41a' }}
+          >
+            Tôi đã chuyển khoản thành công
+          </Button>
+        ]}
+        width={450}
+        centered
+      >
+        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ marginBottom: 16 }}>
+                <Text strong style={{ fontSize: 16 }}>Số tiền cần thanh toán:</Text>
+                <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff4d4f', marginTop: 8 }}>
+                    {selectedBooking ? formatCurrency(selectedBooking.finalPrice || selectedBooking.price || 0) : '0 ₫'}
+                </div>
+            </div>
+            
+            <div style={{ 
+                background: '#fff', 
+                padding: 16, 
+                borderRadius: 12, 
+                display: 'inline-block', 
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                marginBottom: 20
+            }}>
+                {/* Mock QR Code Image */}
+                <img 
+                    src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=TravelEasyMockPayment" 
+                    alt="Payment QR Code" 
+                    style={{ width: 250, height: 250 }}
+                />
+            </div>
+            
+            <div style={{ textAlign: 'left', background: '#f5f5f5', padding: 15, borderRadius: 10 }}>
+                <Paragraph style={{ marginBottom: 8 }}>
+                    <Text strong>Ngân hàng:</Text> VIETCOMBANK
+                </Paragraph>
+                <Paragraph style={{ marginBottom: 8 }}>
+                    <Text strong>Số tài khoản:</Text> 1234567890
+                </Paragraph>
+                <Paragraph style={{ marginBottom: 8 }}>
+                    <Text strong>Chủ tài khoản:</Text> CONG TY TRAVELEASY
+                </Paragraph>
+                <Paragraph style={{ marginBottom: 0 }}>
+                    <Text strong>Nội dung:</Text> TT {selectedBooking?.id}
+                </Paragraph>
+            </div>
+            
+            <Paragraph type="secondary" style={{ marginTop: 20, fontSize: 13 }}>
+                * Sau khi chuyển khoản, vui lòng nhấn nút "Tôi đã chuyển khoản thành công" bên dưới để hệ thống cập nhật trạng thái đơn hàng.
+            </Paragraph>
+        </div>
       </Modal>
     </div>
   );

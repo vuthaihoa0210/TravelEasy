@@ -153,7 +153,7 @@ export default function HomePage() {
       </section>
 
       {/* ── SEARCH CARD (Floating) ── */}
-      <section className="relative z-40 max-w-4xl mx-auto -mt-12 px-4 font-sans">
+      <section className="relative z-40 max-w-4xl mx-auto -mt-12 px-3 md:px-4 font-sans">
         <div className="bg-white rounded-2xl shadow-xl p-5 md:p-8 border border-slate-100">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
@@ -170,7 +170,7 @@ export default function HomePage() {
                 size="large"
                 value={searchType}
                 onChange={(val) => setSearchType(val)}
-                className="md:w-36 h-14 custom-search-type-select !rounded-none border-r border-slate-100"
+                className="w-full md:w-36 h-14 custom-search-type-select !rounded-none border-r border-slate-100"
                 variant="borderless"
                 style={{ backgroundColor: '#f8fafc' }}
                 options={[
@@ -198,7 +198,7 @@ export default function HomePage() {
             </div>
             <button 
               onClick={() => router.push(`/${searchType}?search=${encodeURIComponent(searchDest)}`)}
-              className="cursor-pointer px-10 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 min-w-[140px]"
+              className="cursor-pointer w-full md:w-auto px-10 h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 min-w-[140px]"
             >
               <SearchOutlined /> Tìm ngay
             </button>

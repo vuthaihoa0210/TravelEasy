@@ -96,8 +96,11 @@ export default function Header() {
                        
                        <div className="absolute top-[35px] right-0 pt-4 w-52 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
                           <div className="bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl py-2 flex flex-col">
-                             <Link href="/profile" className="px-6 py-3 text-white/70 hover:text-white hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
+                             <Link href="/profile" className="px-6 py-4 text-white/70 hover:text-white hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
                                 Trang cá nhân
+                             </Link>
+                             <Link href="/profile?tab=security" className="px-6 py-4 text-white/70 hover:text-white hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
+                                Đổi mật khẩu
                              </Link>
                              {(session?.user as any)?.role === 'ADMIN' && (
                                <Link href="/admin/bookings" className="px-6 py-3 text-yellow-500/80 hover:text-yellow-400 hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">

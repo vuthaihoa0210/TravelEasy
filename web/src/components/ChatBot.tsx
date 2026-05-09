@@ -520,6 +520,7 @@ export default function ChatBot() {
                     flex: 1, border: '1.5px solid #e0e8ff', borderRadius: 24,
                     padding: '9px 16px', fontSize: 14, outline: 'none',
                     background: '#f7f9fc', transition: 'border-color 0.2s',
+                    color: '#1e293b',
                   }}
                   onFocus={e => (e.target.style.borderColor = '#1677ff')}
                   onBlur={e => (e.target.style.borderColor = '#e0e8ff')}
@@ -597,7 +598,7 @@ export default function ChatBot() {
 
               {liveStatus === 'connected' && (
                 <>
-                  <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px 8px', background: '#f7f9fc' }}>
+                  <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 14px 8px', background: '#f7f9fc' }}>
                     {liveMessages.length === 0 && (
                       <div style={{ textAlign: 'center', color: '#aaa', padding: '20px 0', fontSize: 13 }}>
                         Gửi tin nhắn để bắt đầu cuộc trò chuyện nhé 👋
@@ -638,7 +639,7 @@ export default function ChatBot() {
                   </div>
 
                   {/* Live Input */}
-                  <div style={{ padding: '10px 12px', background: '#fff', borderTop: '1px solid #f0f0f0', display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ flexShrink: 0, padding: '10px 12px', background: '#fff', borderTop: '1px solid #f0f0f0', display: 'flex', gap: 8, alignItems: 'center' }}>
                     <input
                       value={liveInput}
                       onChange={e => setLiveInput(e.target.value)}
@@ -648,6 +649,7 @@ export default function ChatBot() {
                         flex: 1, border: '1.5px solid #e0e8ff', borderRadius: 24,
                         padding: '9px 16px', fontSize: 14, outline: 'none',
                         background: '#f7f9fc', transition: 'border-color 0.2s',
+                        color: '#1e293b',
                       }}
                       onFocus={e => (e.target.style.borderColor = '#1677ff')}
                       onBlur={e => (e.target.style.borderColor = '#e0e8ff')}

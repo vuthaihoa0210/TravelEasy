@@ -24,7 +24,7 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 // Thay đổi URL này thành IP nội bộ của bạn nếu dùng thiết bị thật
 // Đối với Android Emulator: http://10.0.2.2:4000
@@ -128,6 +128,9 @@ export default function App() {
   const [reviewedBookings, setReviewedBookings] = useState({});
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [showHotelGallery, setShowHotelGallery] = useState(false);
+  const [currentHotelGallery, setCurrentHotelGallery] = useState([]);
+  const [hotelGalleryIndex, setHotelGalleryIndex] = useState(0);
 
   // Chat States
   const [chatMode, setChatMode] = useState('ai'); // 'ai' or 'live'
@@ -191,7 +194,9 @@ export default function App() {
 
   // Login States
   const [loginData, setLoginData] = useState({ email: '', password: '' });
-
+  const [forgotPasswordData, setForgotPasswordData] = useState({ step: 1, email: '', otp: '', newPassword: '', confirmPassword: '' });
+  const [changePasswordData, setChangePasswordData] = useState({ oldPassword: '', newPassword: '' });
+  const [showChangePassword, setShowChangePassword] = useState(false);
   // Handle Android Back Button
   useEffect(() => {
     const backAction = () => {
@@ -201,7 +206,7 @@ export default function App() {
         'Tours': 'Home', 'Hotels': 'Home', 'Flights': 'Home', 'Profile': 'Home', 'Chat': 'Home', 'Blogs': 'Home',
         'TourDetail': 'Tours', 'HotelDetail': 'Hotels', 'FlightDetail': 'Flights',
         'BookingDetail': 'Profile',
-        'Register': 'Welcome', 'Login': 'Welcome',
+        'Register': 'Welcome', 'Login': 'Welcome', 'ForgotPassword': 'Login',
         'Booking': 'Home' // fallback
       };
 
@@ -855,7 +860,7 @@ export default function App() {
               </View>
           </View>
 
-          <TouchableOpacity style={{ alignSelf: 'flex-end', marginBottom: 25 }}>
+          <TouchableOpacity onPress={() => setScreen('ForgotPassword')} style={{ alignSelf: 'flex-end', marginBottom: 25 }}>
             <Text style={{ color: theme.primary, fontWeight: '600' }}>Quên mật khẩu?</Text>
           </TouchableOpacity>
 
@@ -873,6 +878,175 @@ export default function App() {
               <Text style={{ color: theme.primary, fontWeight: 'bold' }}>Tạo tài khoản</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+
+  const onForgotPasswordStep1 = async () => {
+    if (!forgotPasswordData.email) {
+      Alert.alert('Lỗi', 'Vui lòng nhập email!');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotPasswordData.email }),
+      });
+      if (response.ok) {
+        setForgotPasswordData({ ...forgotPasswordData, step: 2 });
+      } else {
+        Alert.alert('Lỗi', 'Có lỗi xảy ra, vui lòng thử lại');
+      }
+    } catch (e) {
+      Alert.alert('Lỗi kết nối', 'Không thể kết nối đến máy chủ');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onForgotPasswordStep2 = () => {
+    if (!forgotPasswordData.otp) {
+      Alert.alert('Lỗi', 'Vui lòng nhập mã OTP!');
+      return;
+    }
+    setForgotPasswordData({ ...forgotPasswordData, step: 3 });
+  };
+
+  const onForgotPasswordStep3 = async () => {
+    if (!forgotPasswordData.newPassword || !forgotPasswordData.confirmPassword) {
+      Alert.alert('Lỗi', 'Vui lòng điền đủ mật khẩu!');
+      return;
+    }
+    if (forgotPasswordData.newPassword !== forgotPasswordData.confirmPassword) {
+      Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp!');
+      return;
+    }
+    if (forgotPasswordData.newPassword.length < 6) {
+      Alert.alert('Lỗi', 'Mật khẩu mới phải từ 6 ký tự!');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: forgotPasswordData.email,
+          otp: forgotPasswordData.otp,
+          newPassword: forgotPasswordData.newPassword
+        }),
+      });
+      if (response.ok) {
+        Alert.alert('Thành công', 'Đặt lại mật khẩu thành công!');
+        setForgotPasswordData({ step: 1, email: '', otp: '', newPassword: '', confirmPassword: '' });
+        setScreen('Login');
+      } else {
+        const data = await response.json();
+        Alert.alert('Lỗi', data.error || 'Có lỗi xảy ra');
+      }
+    } catch (e) {
+      Alert.alert('Lỗi kết nối', 'Không thể kết nối đến máy chủ');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderForgotPassword = () => (
+    <SafeAreaView style={styles.mainContainer}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} bounces={false}>
+        <LinearGradient colors={[theme.primary, '#1d4ed8']} style={{ paddingTop: 60, paddingBottom: 40, paddingHorizontal: 30, borderBottomLeftRadius: 40, borderBottomRightRadius: 40 }}>
+          <TouchableOpacity onPress={() => setScreen('Login')} style={{ marginBottom: 25 }}>
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ fontSize: 28, fontWeight: 'bold', color: 'white', marginBottom: 5 }}>Quên Mật Khẩu</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center' }}>
+              {forgotPasswordData.step === 1 
+                ? 'Nhập email để nhận mã OTP' 
+                : forgotPasswordData.step === 2 
+                    ? 'Chúng tôi đã gửi mã xác nhận đến tài khoản gmail của bạn'
+                    : 'Xác thực thành công. Hãy tạo một mật khẩu mới'}
+            </Text>
+          </View>
+        </LinearGradient>
+
+        <View style={{ paddingHorizontal: 24, paddingTop: 40 }}>
+          {forgotPasswordData.step === 1 && (
+            <>
+              <View style={[styles.inputWrapper, { marginBottom: 30 }]}>
+                <Ionicons name="mail-outline" size={20} color={theme.subText} style={{ marginRight: 10 }} />
+                <TextInput 
+                  style={[styles.input, { color: theme.text, height: 50 }]}
+                  placeholder="Email của bạn"
+                  placeholderTextColor="#999"
+                  value={forgotPasswordData.email}
+                  onChangeText={(text) => setForgotPasswordData({...forgotPasswordData, email: text})}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+              <TouchableOpacity style={[styles.authSubmitBtn, { marginTop: 10, height: 55, borderRadius: 15 }]} onPress={onForgotPasswordStep1} disabled={loading}>
+                {loading ? <ActivityIndicator color="white" /> : <Text style={styles.authSubmitBtnText}>Tiếp tục</Text>}
+              </TouchableOpacity>
+            </>
+          )}
+          
+          {forgotPasswordData.step === 2 && (
+            <>
+              <View style={{ backgroundColor: '#e6f4ff', padding: 20, borderRadius: 15, marginBottom: 35, alignItems: 'center', borderWidth: 1, borderColor: '#bae7ff' }}>
+                <Text style={{ color: '#1677ff', fontSize: 15 }}>Mã OTP của bạn là:</Text>
+                <Text style={{ color: '#1677ff', fontWeight: 'bold', fontSize: 24, marginTop: 5 }}>11222432</Text>
+              </View>
+              <View style={[styles.inputWrapper, { marginBottom: 30 }]}>
+                <Ionicons name="key-outline" size={20} color={theme.subText} style={{ marginRight: 10 }} />
+                <TextInput 
+                  style={[styles.input, { color: theme.text, height: 50 }]}
+                  placeholder="Nhập mã OTP (11222432)"
+                  placeholderTextColor="#999"
+                  value={forgotPasswordData.otp}
+                  onChangeText={(text) => setForgotPasswordData({...forgotPasswordData, otp: text})}
+                />
+              </View>
+              <TouchableOpacity style={[styles.authSubmitBtn, { marginTop: 10, height: 55, borderRadius: 15 }]} onPress={onForgotPasswordStep2}>
+                <Text style={styles.authSubmitBtnText}>Xác nhận OTP</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {forgotPasswordData.step === 3 && (
+            <>
+              <View style={[styles.inputWrapper, { marginBottom: 25 }]}>
+                <Ionicons name="lock-closed-outline" size={20} color={theme.subText} style={{ marginRight: 10 }} />
+                <TextInput 
+                  style={[styles.input, { color: theme.text, height: 50 }]}
+                  placeholder="Mật khẩu mới"
+                  placeholderTextColor="#999"
+                  secureTextEntry
+                  value={forgotPasswordData.newPassword}
+                  onChangeText={(text) => setForgotPasswordData({...forgotPasswordData, newPassword: text})}
+                />
+              </View>
+              <View style={[styles.inputWrapper, { marginBottom: 35 }]}>
+                <Ionicons name="shield-checkmark-outline" size={20} color={theme.subText} style={{ marginRight: 10 }} />
+                <TextInput 
+                  style={[styles.input, { color: theme.text, height: 50 }]}
+                  placeholder="Xác nhận mật khẩu mới"
+                  placeholderTextColor="#999"
+                  secureTextEntry
+                  value={forgotPasswordData.confirmPassword}
+                  onChangeText={(text) => setForgotPasswordData({...forgotPasswordData, confirmPassword: text})}
+                />
+              </View>
+              <TouchableOpacity style={[styles.authSubmitBtn, { marginTop: 10, height: 55, borderRadius: 15 }]} onPress={onForgotPasswordStep3} disabled={loading}>
+                {loading ? <ActivityIndicator color="white" /> : <Text style={styles.authSubmitBtnText}>Đặt Lại Mật Khẩu</Text>}
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </ScrollView>
       </KeyboardAvoidingView>
@@ -959,10 +1133,7 @@ export default function App() {
 
             <Text style={[styles.sectionHeading, { marginTop: 30, marginBottom: 15 }]}>Cài đặt tài khoản</Text>
             {[
-              { icon: 'notifications-outline', label: 'Thông báo', detail: 'Đã bật' },
-              { icon: 'shield-checkmark-outline', label: 'Bảo mật', detail: 'Bình thường' },
               { icon: isDarkMode ? 'sunny-outline' : 'moon-outline', label: 'Giao diện', detail: manualTheme === 'system' ? 'Tự động' : (manualTheme === 'dark' ? 'Tối' : 'Sáng'), action: 'theme' },
-              { icon: 'help-circle-outline', label: 'Trung tâm trợ giúp', detail: '' },
             ].map((item, idx) => (
               <TouchableOpacity key={idx} style={styles.settingsItem} onPress={() => {
                 if (item.action === 'theme') {
@@ -986,8 +1157,77 @@ export default function App() {
               </TouchableOpacity>
             ))}
 
+            <TouchableOpacity style={styles.settingsItem} onPress={() => setShowChangePassword(!showChangePassword)}>
+              <View style={[styles.categoryIconCircle, { width: 40, height: 40, marginBottom: 0 }]}>
+                <Ionicons name="lock-closed-outline" size={20} color={theme.primary} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 15, justifyContent: 'center' }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>Đổi mật khẩu</Text>
+              </View>
+              <Ionicons name={showChangePassword ? "chevron-down" : "chevron-forward"} size={18} color="#ccc" />
+            </TouchableOpacity>
+
+            {showChangePassword && (
+              <View style={{ backgroundColor: theme.cardBg, padding: 20, borderRadius: 15, marginBottom: 25, borderWidth: 1, borderColor: theme.border }}>
+                <TextInput 
+                  style={[styles.input, { backgroundColor: theme.inputBg, marginBottom: 15, borderRadius: 10, paddingHorizontal: 15, height: 50 }]}
+                  placeholder="Mật khẩu cũ"
+                  placeholderTextColor="#999"
+                  secureTextEntry
+                  value={changePasswordData.oldPassword}
+                  onChangeText={(text) => setChangePasswordData({...changePasswordData, oldPassword: text})}
+                />
+                <TextInput 
+                  style={[styles.input, { backgroundColor: theme.inputBg, marginBottom: 25, borderRadius: 10, paddingHorizontal: 15, height: 50 }]}
+                  placeholder="Mật khẩu mới (tối thiểu 6 ký tự)"
+                  placeholderTextColor="#999"
+                  secureTextEntry
+                  value={changePasswordData.newPassword}
+                  onChangeText={(text) => setChangePasswordData({...changePasswordData, newPassword: text})}
+                />
+                <TouchableOpacity 
+                  style={[styles.authSubmitBtn, { height: 55, borderRadius: 12 }]} 
+                  onPress={async () => {
+                    if (!changePasswordData.oldPassword || !changePasswordData.newPassword) {
+                      Alert.alert('Lỗi', 'Vui lòng nhập đủ thông tin'); return;
+                    }
+                    if (changePasswordData.newPassword.length < 6) {
+                      Alert.alert('Lỗi', 'Mật khẩu mới phải từ 6 ký tự'); return;
+                    }
+                    setLoading(true);
+                    try {
+                      const response = await fetch(`${BACKEND_URL}/api/auth/change-password`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                          email: userData?.email,
+                          oldPassword: changePasswordData.oldPassword,
+                          newPassword: changePasswordData.newPassword
+                        }),
+                      });
+                      if (response.ok) {
+                        Alert.alert('Thành công', 'Đổi mật khẩu thành công!');
+                        setChangePasswordData({ oldPassword: '', newPassword: '' });
+                        setShowChangePassword(false);
+                      } else {
+                        const data = await response.json();
+                        Alert.alert('Lỗi', data.error || 'Có lỗi xảy ra');
+                      }
+                    } catch (e) {
+                      Alert.alert('Lỗi kết nối', 'Không thể kết nối đến máy chủ');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  {loading ? <ActivityIndicator color="white" /> : <Text style={styles.authSubmitBtnText}>Xác nhận đổi</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
+
             <TouchableOpacity 
-              style={[styles.authSubmitBtn, { backgroundColor: '#ff4d4f', marginTop: 40, height: 50, borderRadius: 12 }]} 
+              style={[styles.authSubmitBtn, { backgroundColor: '#ff4d4f', marginTop: 20, height: 50, borderRadius: 12 }]} 
               onPress={() => {
                 setIsLoggedIn(false);
                 setUserData(null);
@@ -1070,7 +1310,7 @@ export default function App() {
           totalCount = (bookingForm.totalPeople || 0) + (bookingForm.doubleRooms || 0);
         }
 
-        const body: any = {
+        const body = {
           userId: userData.id,
           type: type.toUpperCase(),
           itemId: item.id,
@@ -1714,6 +1954,58 @@ export default function App() {
                   )}
                 </ScrollView>
 
+                {/* ── Hotel Photo Gallery for selected hotel ── */}
+                {selectedTourHotel && (() => {
+                  const selHotel = hotels.find(h => h.id === selectedTourHotel);
+                  if (!selHotel) return null;
+                  const hotelImgs = getGalleryImages(selHotel.image, selHotel.id, 'hotel');
+                  return (
+                    <View style={{ marginTop: 12, marginBottom: 4 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                        <Ionicons name="images-outline" size={16} color={theme.primary} style={{ marginRight: 6 }} />
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text }}>
+                          Ảnh khách sạn:{'  '}
+                          <Text style={{ color: theme.primary }}>{selHotel.name}</Text>
+                        </Text>
+                      </View>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ marginHorizontal: -24, paddingHorizontal: 24, paddingBottom: 8 }}
+                      >
+                        {hotelImgs.map((img, i) => (
+                          <TouchableOpacity 
+                            key={i} 
+                            onPress={() => {
+                              setCurrentHotelGallery(hotelImgs);
+                              setHotelGalleryIndex(i);
+                              setShowHotelGallery(true);
+                            }}
+                            activeOpacity={0.8}
+                            style={{
+                              marginRight: 10,
+                              borderRadius: 12,
+                              overflow: 'hidden',
+                              backgroundColor: theme.cardBg,
+                              shadowColor: '#000',
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.1,
+                              shadowRadius: 4,
+                              elevation: 3,
+                            }}
+                          >
+                            <Image
+                              source={{ uri: img }}
+                              style={{ width: 120, height: 90, backgroundColor: theme.lightGray }}
+                              resizeMode="cover"
+                            />
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  );
+                })()}
+
                 <Text style={[styles.detailSectionTitle, { marginTop: 10 }]}>Chuyến bay khứ hồi ({item.location})</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -24, paddingHorizontal: 24, paddingBottom: 15 }}>
                   {flights.filter(f => f.location === item.location).map(flight => (
@@ -1922,6 +2214,50 @@ export default function App() {
                   <Text style={{ fontWeight: 'bold', color: theme.headerText }}>✓ Chọn {detailType === 'hotel' ? 'Khách sạn' : 'Vé bay'} này</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* --- HOTEL GALLERY FULL PREVIEW MODAL --- */}
+        <Modal 
+          visible={showHotelGallery} 
+          transparent={true} 
+          animationType="fade"
+          onRequestClose={() => setShowHotelGallery(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' }}>
+            <TouchableOpacity 
+              style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 10 }}
+              onPress={() => setShowHotelGallery(false)}
+            >
+              <Ionicons name="close-circle" size={36} color="white" />
+            </TouchableOpacity>
+
+            <View style={{ width: '100%', height: height * 0.5 }}>
+              <ScrollView 
+                horizontal 
+                pagingEnabled 
+                showsHorizontalScrollIndicator={false}
+                contentOffset={{ x: hotelGalleryIndex * width, y: 0 }}
+                onMomentumScrollEnd={(e) => {
+                  const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+                  setHotelGalleryIndex(idx);
+                }}
+              >
+                {currentHotelGallery.map((img, idx) => (
+                  <View key={idx} style={{ width: width, height: height * 0.5, justifyContent: 'center' }}>
+                    <Image 
+                      source={{ uri: img }} 
+                      style={{ width: '100%', height: '100%' }} 
+                      resizeMode="contain" 
+                    />
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={{ marginTop: 20, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 15, paddingVertical: 5, borderRadius: 20 }}>
+              <Text style={{ color: 'white', fontWeight: 'bold' }}>{hotelGalleryIndex + 1} / {currentHotelGallery.length}</Text>
             </View>
           </View>
         </Modal>
@@ -2254,6 +2590,7 @@ export default function App() {
       case 'Welcome': return renderWelcome();
       case 'Register': return renderRegister();
       case 'Login': return renderLogin();
+      case 'ForgotPassword': return renderForgotPassword();
       case 'Home': return renderHome();
       case 'Tours': return renderTours();
       case 'Hotels': return renderHotels();

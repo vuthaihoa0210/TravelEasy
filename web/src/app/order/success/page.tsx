@@ -17,7 +17,7 @@ export default function OrderSuccessPage() {
             alignItems: 'center',
             justifyContent: 'center',
             background: '#f0f2f5',
-            padding: '40px 20px'
+            padding: '140px 20px 60px' // Tăng dãn cách phía trên để không bị Header che
         }}>
             <Card
                 style={{
@@ -48,7 +48,7 @@ export default function OrderSuccessPage() {
                             size="large"
                             icon={<HistoryOutlined />}
                             style={{ height: 48, borderRadius: 8, padding: '0 32px' }}
-                            onClick={() => router.push('/bookings')}
+                            onClick={() => router.push('/profile')}
                         >
                             Theo dõi đơn hàng
                         </Button>,

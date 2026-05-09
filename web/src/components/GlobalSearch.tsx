@@ -19,7 +19,7 @@ export default function GlobalSearch() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto my-20 px-6">
+    <div className="max-w-4xl mx-auto my-20 px-3 md:px-6">
       <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border border-slate-50 relative overflow-hidden">
         {/* Subtle Background Pattern */}
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-blue-50/50 rounded-full blur-3xl" />
@@ -42,7 +42,7 @@ export default function GlobalSearch() {
             size="large"
             value={searchType}
             onChange={setSearchType}
-            className="md:w-44 h-14 custom-search-select !rounded-none border-r border-slate-100"
+            className="w-full md:w-44 h-14 custom-search-select !rounded-none border-r border-slate-100"
             variant="borderless"
             style={{ backgroundColor: '#f8fafc' }}
           >
@@ -71,7 +71,7 @@ export default function GlobalSearch() {
             size="large"
             icon={<SearchOutlined />}
             onClick={handleSearch}
-            className="h-14 px-10 !rounded-none font-bold bg-blue-600 hover:bg-blue-700 transition-all border-none min-w-[140px]"
+            className="w-full md:w-auto h-14 px-10 !rounded-none font-bold bg-blue-600 hover:bg-blue-700 transition-all border-none min-w-[140px]"
           >
             Tìm ngay
           </Button>

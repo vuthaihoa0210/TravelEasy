@@ -190,7 +190,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 });
 
-// Forgot Password (Mock)
+// Forgot Password
 router.post('/forgot-password', async (req: Request, res: Response) => {
     try {
         const { email } = req.body;
@@ -209,9 +209,108 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
             return;
         }
 
-        // In a real app, send an email here
-        res.json({ message: 'Yêu cầu đặt lại mật khẩu đã được gửi đến email của bạn' });
+        const otpCode = "11222432"; 
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 60 minutes
+
+        await prisma.oTP.deleteMany({
+            where: { email }
+        });
+
+        await prisma.oTP.create({
+            data: {
+                email,
+                code: otpCode,
+                expiresAt,
+            }
+        });
+
+        res.json({ message: 'Mã OTP: 11222432' });
     } catch (error) {
+        console.error("FORGOT PASSWORD ERROR:", error);
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });
+    }
+});
+
+// Reset Password (with OTP)
+router.post('/reset-password', async (req: Request, res: Response) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+
+        if (!email || !otp || !newPassword) {
+            res.status(400).json({ error: 'Vui lòng điền đầy đủ thông tin' });
+            return;
+        }
+
+        // Verify OTP
+        const validateOtp = await prisma.oTP.findFirst({
+            where: { email, code: otp }
+        });
+
+        if (!validateOtp) {
+            res.status(400).json({ error: 'Mã OTP không đúng' });
+            return;
+        }
+
+        if (validateOtp.expiresAt < new Date()) {
+            res.status(400).json({ error: 'Mã OTP đã hết hạn' });
+            return;
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await prisma.user.update({
+            where: { email },
+            data: { password: hashedPassword }
+        });
+
+        // Clean up OTP after successful reset
+        await prisma.oTP.deleteMany({
+            where: { email }
+        });
+
+        res.json({ message: 'Đặt lại mật khẩu thành công' });
+    } catch (error) {
+        console.error("RESET PASSWORD ERROR:", error);
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });
+    }
+});
+
+// Change Password
+router.post('/change-password', async (req: Request, res: Response) => {
+    try {
+        const { email, oldPassword, newPassword } = req.body;
+
+        if (!email || !oldPassword || !newPassword) {
+            res.status(400).json({ error: 'Vui lòng nhập đầy đủ mật khẩu cũ và mới' });
+            return;
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { email },
+        });
+
+        if (!user || !user.password) {
+            res.status(404).json({ error: 'Tài khoản không tồn tại' });
+            return;
+        }
+
+        const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+
+        if (!isPasswordValid) {
+            res.status(401).json({ error: 'Mật khẩu cũ không chính xác' });
+            return;
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await prisma.user.update({
+            where: { email },
+            data: { password: hashedPassword }
+        });
+
+        res.json({ message: 'Đổi mật khẩu thành công' });
+    } catch (error) {
+        console.error("CHANGE PASSWORD ERROR:", error);
         res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });
     }
 });

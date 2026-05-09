@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 import { Badge, Button, Card, Spin, Tag, Typography, message, Empty } from 'antd';
 import { MessageOutlined, CloseCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 
-const { Text, Title } = Typography;
+const { Title } = Typography;
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
 
 interface ChatRoom {
@@ -41,6 +41,7 @@ export default function AdminChatPage() {
   const socketRef = useRef<Socket | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const selectedRoomRef = useRef<ChatRoom | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Keep ref in sync with state
   useEffect(() => { selectedRoomRef.current = selectedRoom; }, [selectedRoom]);
@@ -120,6 +121,24 @@ export default function AdminChatPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, session]);
 
+  // Poll messages for selected room (fallback for missed socket events)
+  const pollMessages = useCallback(async (roomId: number) => {
+    try {
+      const res = await fetch(`${BACKEND}/api/chat/rooms/${roomId}/messages`);
+      if (res.ok) {
+        let data: ChatMessage[] = [];
+        try { data = await res.json(); } catch { /* non-JSON */ }
+        if (Array.isArray(data)) {
+          setMessages(prev => {
+            // Only update if there are new messages
+            if (data.length !== prev.length) return data;
+            return prev;
+          });
+        }
+      }
+    } catch { /* silent poll error */ }
+  }, []);
+
   // Select room
   const selectRoom = async (room: ChatRoom) => {
     setSelectedRoom(room);
@@ -137,7 +156,16 @@ export default function AdminChatPage() {
         setMessages(Array.isArray(data) ? data : []);
       }
     } catch { message.error('Lỗi tải tin nhắn'); }
+
+    // Start polling every 3 seconds as real-time fallback
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    pollIntervalRef.current = setInterval(() => pollMessages(room.id), 3000);
   };
+
+  // Stop polling when component unmounts
+  useEffect(() => {
+    return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); };
+  }, []);
 
   useEffect(() => {
     if (messagesContainerRef.current) {
@@ -189,8 +217,8 @@ export default function AdminChatPage() {
   if (status === 'unauthenticated' || session?.user?.role !== 'ADMIN') return null;
 
   return (
-    <div style={{ padding: 24, minHeight: '100vh', background: '#f0f5ff' }}>
-      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{ padding: 24, height: '100vh', display: 'flex', flexDirection: 'column', background: '#f0f5ff', boxSizing: 'border-box' }}>
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <Title level={3} style={{ margin: 0 }}>
           <MessageOutlined style={{ marginRight: 10, color: '#1677ff' }} />
           Quản lý Chat Hỗ trợ
@@ -198,11 +226,11 @@ export default function AdminChatPage() {
         <Button icon={<ReloadOutlined />} onClick={fetchRooms}>Làm mới</Button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 16, height: 'calc(100vh - 160px)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 16, flex: 1, minHeight: 0 }}>
         {/* Room List */}
         <Card
-          styles={{ body: { padding: 0, height: '100%', overflowY: 'auto' } }}
-          style={{ borderRadius: 12, overflow: 'hidden' }}
+          styles={{ body: { padding: 0, overflowY: 'auto', flex: 1, minHeight: 0 } }}
+          style={{ borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}
           title={<span style={{ fontWeight: 700 }}>Hội thoại ({rooms.length})</span>}
         >
           {loading ? (
@@ -269,8 +297,8 @@ export default function AdminChatPage() {
         {/* Chat Panel */}
         {selectedRoom ? (
           <Card
-            style={{ borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
-          styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column', height: '100%' } }}
+            style={{ borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}
+            styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' } }}
             title={
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -294,8 +322,8 @@ export default function AdminChatPage() {
               </div>
             }
           >
-            {/* Messages */}
-            <div ref={messagesContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', background: '#f7f9fc' }}>
+            {/* Messages - flex:1 + minHeight:0 ensures it shrinks and scrolls */}
+            <div ref={messagesContainerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px', background: '#f7f9fc' }}>
               {messages.length === 0 && (
                 <div style={{ textAlign: 'center', color: '#aaa', padding: '40px 0', fontSize: 14 }}>
                   Chưa có tin nhắn nào trong hội thoại này
@@ -348,9 +376,10 @@ export default function AdminChatPage() {
 
             </div>
 
-            {/* Input */}
+            {/* Input - flexShrink:0 ensures it is always visible */}
             {selectedRoom.status === 'OPEN' ? (
               <div style={{
+                flexShrink: 0,
                 padding: '12px 16px', background: '#fff', borderTop: '1px solid #f0f0f0',
                 display: 'flex', gap: 10, alignItems: 'center',
               }}>
@@ -372,10 +401,12 @@ export default function AdminChatPage() {
                   background: input.trim() ? 'linear-gradient(135deg,#1677ff,#0958d9)' : '#e0e0e0',
                   color: '#fff', fontSize: 20, display: 'flex',
                   alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
+                  flexShrink: 0,
                 }}>➤</button>
               </div>
             ) : (
               <div style={{
+                flexShrink: 0,
                 padding: '12px 16px', background: '#f9f9f9', borderTop: '1px solid #f0f0f0',
                 textAlign: 'center', color: '#999', fontSize: 13,
               }}>
