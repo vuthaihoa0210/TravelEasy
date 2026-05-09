@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import {
   Card, Avatar, Typography, Button, Descriptions, Tag, Spin,
   Tabs, Empty, Row, Col, Statistic, Badge, Modal, Form, Input, message
@@ -62,7 +62,7 @@ const typeIcon: Record<string, string> = {
   FLIGHT: '✈️',
 };
 
-export default function ProfilePage() {
+function ProfileContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -573,5 +573,13 @@ export default function ProfilePage() {
         </div>
       </Modal>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div style={{ textAlign: 'center', padding: '120px 0' }}><Spin size="large" /></div>}>
+      <ProfileContent />
+    </Suspense>
   );
 }
