@@ -125,10 +125,10 @@ model Booking {
   updatedAt      DateTime  @updatedAt
   flightId       Int?
   hotelId        Int?
-  singleRooms    Int?
+  businessSeats  Int?
   doubleRooms    Int?
   economySeats   Int?
-  businessSeats  Int?
+  singleRooms    Int?
   adminRead      Boolean   @default(false)
   user           User      @relation(fields: [userId], references: [id])
 }

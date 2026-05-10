@@ -2,25 +2,27 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
+import dns from 'dns';
+
+// Ép dùng IPv4 để tránh lỗi ENETUNREACH trên Render
+dns.setDefaultResultOrder('ipv4first');
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// Cấu hình Nodemailer gửi qua Gmail bằng cổng 587 và ép dùng IPv4 (khắc phục lỗi ENETUNREACH trên Render)
+// Cấu hình Nodemailer gửi qua Gmail bằng cổng 465 (SSL) - thường ổn định hơn trên Render
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // true cho cổng 465, false cho các cổng khác
+    port: 465,
+    secure: true, // true cho cổng 465
     auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_PASS
     },
     tls: {
-        rejectUnauthorized: false // Giúp tránh lỗi chứng chỉ trên một số môi trường server
+        rejectUnauthorized: false
     },
-    family: 4, // Ép dùng IPv4 
-    debug: false, // Tắt log chi tiết
-    logger: false // Tắt ghi log ra bảng điều khiển
+    family: 4 // Ép dùng IPv4 
 } as any);
 
 // Verify transporter connection on startup

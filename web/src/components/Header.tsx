@@ -76,8 +76,10 @@ export default function Header() {
       const res = await fetch('/api/bookings/mark-all-read', { method: 'POST' });
       if (res.ok) {
         setUnreadCount(0);
-        // Refresh list to update 'adminRead' status of items (optional)
-        // fetchNotifications(); 
+        // Cập nhật trạng thái adminRead cục bộ để các dấu chấm biến mất ngay lập tức
+        setRecentNotifications(prev => 
+          prev.map(noti => ({ ...noti, adminRead: true }))
+        );
       }
     } catch (error) {
       console.error('Failed to mark read:', error);
