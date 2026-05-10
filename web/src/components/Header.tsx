@@ -18,9 +18,16 @@ import {
   ChevronRight,
   Map,
   Hotel,
-  Plane
+  Plane,
+  Bell
 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/vi';
+
+dayjs.extend(relativeTime);
+dayjs.locale('vi');
 
 export default function Header() {
   const { data: session } = useSession();
@@ -31,6 +38,51 @@ export default function Header() {
   const [isExploreOpen, setIsExploreOpen] = useState(false);
   const [isHomeOpen, setIsHomeOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotiOpen, setIsNotiOpen] = useState(false);
+
+  const fetchNotifications = async () => {
+    if ((session?.user as any)?.role !== 'ADMIN') return;
+    try {
+      // Fetch recent 10 bookings
+      const resList = await fetch('/api/bookings/recent-list');
+      if (resList.ok) {
+        const data = await resList.json();
+        setRecentNotifications(data);
+      }
+
+      // Fetch unread count for red dot
+      const resCount = await fetch('/api/bookings/unread-count');
+      if (resCount.ok) {
+        const data = await resCount.json();
+        setUnreadCount(data.count || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (mounted && (session?.user as any)?.role === 'ADMIN') {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 30000); // 30s
+      return () => clearInterval(interval);
+    }
+  }, [mounted, session]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      const res = await fetch('/api/bookings/mark-all-read', { method: 'POST' });
+      if (res.ok) {
+        setUnreadCount(0);
+        // Refresh list to update 'adminRead' status of items (optional)
+        // fetchNotifications(); 
+      }
+    } catch (error) {
+      console.error('Failed to mark read:', error);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -88,38 +140,102 @@ export default function Header() {
             {/* Right part: Auth and Help */}
             <div className="flex items-center justify-end border-r border-white/10">
               <div className="flex items-center h-10 border-l border-white/10">
-                 {session ? (
-                    <div className="flex items-center h-full relative group">
-                       <div className="px-6 hover:text-white transition-colors h-full flex items-center border-r border-white/10 capitalize font-normal cursor-pointer gap-1">
-                          Chào, {session.user?.name} <ChevronDown className="w-3 h-3 text-amber-500 transition-transform group-hover:rotate-180" />
-                       </div>
-                       
-                       <div className="absolute top-[35px] right-0 pt-4 w-52 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
-                          <div className="bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl py-2 flex flex-col">
-                             <Link href="/profile" className="px-6 py-4 text-white/70 hover:text-white hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
-                                Trang cá nhân
-                             </Link>
-                             <Link href="/profile?tab=security" className="px-6 py-4 text-white/70 hover:text-white hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
-                                Đổi mật khẩu
-                             </Link>
-                             {(session?.user as any)?.role === 'ADMIN' && (
-                               <Link href="/admin/bookings" className="px-6 py-3 text-yellow-500/80 hover:text-yellow-400 hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
-                                  Trang Quản Trị
-                               </Link>
+                  {session ? (
+                    <div className="flex items-center h-10 border-l border-white/10">
+                       {/* Notification Bell for ADMIN */}
+                       {(session?.user as any)?.role === 'ADMIN' && (
+                         <div className="relative h-full flex items-center border-r border-white/10 group/noti">
+                           <button 
+                             onClick={() => {
+                               setIsNotiOpen(!isNotiOpen);
+                               if (!isNotiOpen && unreadCount > 0) handleMarkAllRead();
+                             }}
+                             className="px-4 h-full flex items-center hover:text-white transition-colors relative"
+                           >
+                             <Bell className={`w-4 h-4 ${unreadCount > 0 ? 'text-amber-500 animate-pulse' : 'text-white/50'}`} />
+                             {unreadCount > 0 && (
+                               <span className="absolute top-2 right-3 w-2 h-2 bg-red-500 rounded-full border border-slate-900" />
                              )}
-                             <button onClick={() => signOut()} className="cursor-pointer px-6 py-3 text-left text-white/70 hover:text-red-400 hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
-                                Đăng xuất
-                             </button>
+                           </button>
+
+                           {/* Notification Dropdown */}
+                           <div className={`absolute top-[40px] right-0 w-80 opacity-0 translate-y-2 pointer-events-none group-hover/noti:opacity-100 group-hover/noti:translate-y-0 group-hover/noti:pointer-events-auto transition-all duration-300 z-[100]`}>
+                              <div className="bg-slate-900/98 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+                                 <div className="px-5 py-4 border-b border-white/10 flex justify-between items-center bg-white/5">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Thông báo gần đây</span>
+                                    {unreadCount > 0 && (
+                                      <span className="bg-amber-500 text-slate-900 text-[9px] font-black px-2 py-0.5 rounded-full">{unreadCount} mới</span>
+                                    )}
+                                 </div>
+                                 <div className="max-h-[400px] overflow-y-auto">
+                                    {recentNotifications.length > 0 ? (
+                                      recentNotifications.map((noti) => (
+                                        <Link 
+                                          key={noti.id}
+                                          href="/admin/bookings" 
+                                          className={`px-5 py-4 flex flex-col gap-1.5 hover:bg-white/5 transition-colors border-b border-white/5 group/item ${!noti.adminRead ? 'bg-white/5' : ''}`}
+                                        >
+                                          <div className="flex justify-between items-start">
+                                            <span className="text-[11px] text-white font-bold leading-tight">
+                                              {!noti.adminRead && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full inline-block mr-2" />}
+                                              <span className="text-amber-400">{noti.customerName}</span> vừa đặt một đơn hàng
+                                            </span>
+                                          </div>
+                                          <div className="text-[10px] text-white/60 font-medium">
+                                            Dịch vụ: <span className="text-white/80">{noti.itemName}</span>
+                                          </div>
+                                          <span className="text-[9px] text-white/30 font-bold uppercase tracking-tighter">
+                                            {dayjs(noti.createdAt).fromNow()}
+                                          </span>
+                                        </Link>
+                                      ))
+                                    ) : (
+                                      <div className="px-5 py-10 flex flex-col items-center justify-center gap-3 opacity-30">
+                                        <Bell className="w-8 h-8" />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Không có thông báo</span>
+                                      </div>
+                                    )}
+                                 </div>
+                                 <Link href="/admin/bookings" className="px-5 py-4 text-center bg-white/5 hover:bg-white/10 transition-colors text-[9px] font-black uppercase tracking-[0.3em] text-white/50 hover:text-white">
+                                    Xem tất cả đơn hàng
+                                 </Link>
+                              </div>
+                           </div>
+                         </div>
+                       )}
+
+                       <div className="flex items-center h-full relative group">
+                          <div className="px-6 hover:text-white transition-colors h-full flex items-center border-r border-white/10 capitalize font-normal cursor-pointer gap-1">
+                             Chào, {session.user?.name} <ChevronDown className="w-3 h-3 text-amber-500 transition-transform group-hover:rotate-180" />
+                          </div>
+                          
+                          <div className="absolute top-[35px] right-0 pt-4 w-52 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
+                             <div className="bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl py-2 flex flex-col">
+                                <Link href="/profile" className="px-6 py-4 text-white/70 hover:text-white hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
+                                   Trang cá nhân
+                                </Link>
+                                <Link href="/profile?tab=security" className="px-6 py-4 text-white/70 hover:text-white hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
+                                   Đổi mật khẩu
+                                </Link>
+                                {(session?.user as any)?.role === 'ADMIN' && (
+                                  <Link href="/admin/bookings" className="px-6 py-3 text-yellow-500/80 hover:text-yellow-400 hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
+                                     Trang Quản Trị
+                                  </Link>
+                                )}
+                                <button onClick={() => signOut()} className="cursor-pointer px-6 py-3 text-left text-white/70 hover:text-red-400 hover:bg-white/5 transition-colors font-bold tracking-widest text-[10px] uppercase">
+                                   Đăng xuất
+                                </button>
+                             </div>
                           </div>
                        </div>
                     </div>
-                 ) : (
+                  ) : (
                     <div className="flex items-center h-full">
                        <Link href="/auth/signin" className="px-6 hover:text-white transition-colors h-full flex items-center border-r border-white/10">Đăng nhập</Link>
                        <Link href="/auth/register" className="px-6 hover:text-white transition-colors h-full flex items-center border-r border-white/10">Đăng ký</Link>
                     </div>
-                 )}
-                 <Link 
+                  )}
+                  <Link 
                     href="/#booking-guide" 
                     onClick={(e) => {
                       if (pathname === '/') {
@@ -128,9 +244,9 @@ export default function Header() {
                       }
                     }}
                     className="px-6 hover:text-white transition-colors h-full flex items-center border-r border-white/10 uppercase font-bold"
-                 >
+                  >
                     Hướng dẫn
-                 </Link>
+                  </Link>
               </div>
             </div>
           </div>

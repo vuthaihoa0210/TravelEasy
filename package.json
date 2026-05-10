@@ -1,0 +1,14 @@
+{
+  "name": "traveleasy",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix web && npm install --prefix app",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:web": "npm run dev --prefix web",
+    "dev": "set NODE_OPTIONS=--no-deprecation && concurrently \"npm run dev:backend\" \"npm run dev:web\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

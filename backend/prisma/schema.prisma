@@ -129,6 +129,7 @@ model Booking {
   doubleRooms    Int?
   economySeats   Int?
   businessSeats  Int?
+  adminRead      Boolean   @default(false)
   user           User      @relation(fields: [userId], references: [id])
 }
 

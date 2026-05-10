@@ -52,9 +52,12 @@ function OrderContent() {
         }
     }, [session, form, loading]);
 
+    const prevCodeRef = React.useRef<string | null>(null);
+
     const handleApplyVoucher = useCallback(async (code: string) => {
         if (!code) {
             setDiscountAmount(0);
+            prevCodeRef.current = null;
             return;
         }
 
@@ -73,10 +76,14 @@ function OrderContent() {
             try { data = await res.json(); } catch { /* non-JSON */ }
             if (data.valid) {
                 setDiscountAmount(data.discountAmount);
-                message.success(`Đã áp dụng mã: giảm ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(data.discountAmount)}`);
+                if (code !== prevCodeRef.current) {
+                    message.success(`Đã áp dụng mã: giảm ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(data.discountAmount)}`);
+                    prevCodeRef.current = code;
+                }
             } else {
                 setDiscountAmount(0);
                 setSelectedVoucherCode(null);
+                prevCodeRef.current = null;
                 message.error(data.message || 'Mã giảm giá không hợp lệ');
             }
         } catch (e) {

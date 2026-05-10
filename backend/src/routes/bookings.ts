@@ -167,6 +167,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 });
 
+
 // Get user bookings
 router.get('/user/:userId', async (req: Request, res: Response) => {
     try {

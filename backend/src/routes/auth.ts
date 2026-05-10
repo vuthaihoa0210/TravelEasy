@@ -19,9 +19,18 @@ const transporter = nodemailer.createTransport({
         rejectUnauthorized: false // Giúp tránh lỗi chứng chỉ trên một số môi trường server
     },
     family: 4, // Ép dùng IPv4 
-    debug: true, // Xem thêm log chi tiết
-    logger: true // Ghi log ra bảng điều khiển Render
+    debug: false, // Tắt log chi tiết
+    logger: false // Tắt ghi log ra bảng điều khiển
 } as any);
+
+// Verify transporter connection on startup
+transporter.verify(function (error: any, success: any) {
+    if (error) {
+        console.error("[NODEMAILER ERROR] Connection failed:", error);
+    } else {
+        console.log("[NODEMAILER SUCCESS] Server is ready to take our messages");
+    }
+});
 
 // Helper function to send email via Nodemailer
 async function sendOTPEmail(email: string, otp: string) {
@@ -33,7 +42,7 @@ async function sendOTPEmail(email: string, otp: string) {
     const mailOptions = {
         from: `"TravelEasy" <${process.env.GMAIL_USER}>`,
         to: email,
-        subject: 'Mã xác nhận Đăng ký tài khoản TravelEasy',
+        subject: 'Mã xác nhận OTP - TravelEasy',
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
                 <h2 style="color: #1677ff; text-align: center;">Xác nhận địa chỉ Email</h2>
@@ -50,11 +59,18 @@ async function sendOTPEmail(email: string, otp: string) {
     };
 
     try {
-        await transporter.sendMail(mailOptions);
-        console.log(`Đã gửi OTP ${otp} tới ${email} qua Gmail.`);
+        console.log(`Đang thử gửi mail tới ${email}...`);
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`Đã gửi OTP ${otp} tới ${email}. MessageId: ${info.messageId}`);
     } catch (error: any) {
-        throw new Error(error.message);
+        console.error("LỖI GỬI MAIL CHI TIẾT:", error);
+        throw new Error(`Nodemailer failed: ${error.message}`);
     }
+}
+
+// Helper function to generate 6-digit random OTP
+function generateOTP() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 // Send OTP
@@ -75,9 +91,9 @@ router.post('/send-otp', async (req: Request, res: Response) => {
             return;
         }
 
-        // SỬ DỤNG MÃ OTP CỐ ĐỊNH CHO MÔI TRƯỜNG DEMO (BỎ QUA LỖI SMTP CỦA RENDER)
-        const otpCode = "11222432"; 
-        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // Tăng hạn lên 60 phút cho thoải mái
+        // TẠO MÃ OTP NGẪU NHIÊN 6 CHỮ SỐ
+        const otpCode = generateOTP(); 
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Hết hạn trong 10 phút
 
         // Delete any existing OTPs for this email to invalidate old ones
         await prisma.oTP.deleteMany({
@@ -92,10 +108,15 @@ router.post('/send-otp', async (req: Request, res: Response) => {
             }
         });
 
-        // Bỏ qua bước gọi Gmail thật
-        // try { await sendOTPEmail(email, otpCode); } catch (mailError) { ... }
-
-        res.json({ message: 'Mã OTP: 11222432' });
+        // Gửi email thật
+        try { 
+            await sendOTPEmail(email, otpCode); 
+            res.json({ message: 'Mã OTP đã được gửi tới email của bạn' });
+        } catch (mailError: any) {
+            console.error("GMAIL ERROR:", mailError);
+            // Nếu lỗi gửi mail, vẫn thông báo thành công nhưng log lỗi (hoặc báo lỗi tùy bạn)
+            res.status(500).json({ error: 'Không thể gửi email OTP. Vui lòng thử lại sau.' });
+        }
     } catch (error) {
         console.error("SEND OTP ERROR:", error);
         res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });
@@ -209,8 +230,8 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
             return;
         }
 
-        const otpCode = "11222432"; 
-        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 60 minutes
+        const otpCode = generateOTP(); 
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
         await prisma.oTP.deleteMany({
             where: { email }
@@ -224,7 +245,14 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
             }
         });
 
-        res.json({ message: 'Mã OTP: 11222432' });
+        // Gửi email thật
+        try {
+            await sendOTPEmail(email, otpCode);
+            res.json({ message: 'Mã OTP đã được gửi tới email của bạn' });
+        } catch (mailError) {
+            console.error("GMAIL ERROR:", mailError);
+            res.status(500).json({ error: 'Không thể gửi email OTP. Vui lòng thử lại sau.' });
+        }
     } catch (error) {
         console.error("FORGOT PASSWORD ERROR:", error);
         res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });

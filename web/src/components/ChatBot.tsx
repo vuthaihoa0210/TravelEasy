@@ -30,53 +30,65 @@ const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
 const BOT_NAME = 'TravelEasy AI';
 
 // ── AI Bot Rules ─────────────────────────────────────────────────────────────
-const rules: { keywords: string[]; answer: string }[] = [
+const rules: { keywords: string[]; regex?: RegExp; answer: string }[] = [
   {
-    keywords: ['xin chào', 'hello', 'hi', 'chào', 'hey'],
+    keywords: ['xin chào', 'hello', 'hi', 'chào', 'hey', 'alo', 'helu', 'ê'],
+    regex: /^(hi|hello|chao|xin chao|hey|alo)\b/i,
     answer: 'Xin chào! 👋 Mình là trợ lý AI của **TravelEasy**. Mình có thể giúp bạn đặt vé, tìm tour, khách sạn hoặc tra cứu ưu đãi. Bạn cần hỗ trợ gì hôm nay?',
   },
   {
-    keywords: ['vé máy bay', 'vé bay', 'chuyến bay', 'flight', 'bay'],
+    keywords: ['vé máy bay', 'vé bay', 'chuyến bay', 'flight', 'bay', 'đặt vé', 'mua vé'],
+    regex: /v[eé] m[aá]y bay|đ[aặ]t v[eé]|mua v[eé]|bay/i,
     answer: '✈️ **Đặt vé máy bay tại TravelEasy:**\n- Hỗ trợ bay trong nước & quốc tế\n- Nhiều hãng bay: Vietnam Airlines, Vietjet, Bamboo...\n- Giá tốt, đặt nhanh, thanh toán an toàn\n\n👉 Truy cập [Đặt vé máy bay](/flights) để xem ngay!',
   },
   {
-    keywords: ['khách sạn', 'phòng', 'nghỉ', 'hotel', 'resort'],
+    keywords: ['khách sạn', 'phòng', 'nghỉ', 'hotel', 'resort', 'đặt phòng'],
+    regex: /kh[aá]ch s[aạ]n|đ[aặ]t ph[oò]ng|resort/i,
     answer: '🏨 **Đặt phòng khách sạn tại TravelEasy:**\n- Hơn 1.200 khách sạn từ 2★ đến 5★\n- Khu vực trong nước & quốc tế\n- Đặt phòng tức thì, hủy linh hoạt\n\n👉 Xem danh sách tại [Khách sạn](/hotels)!',
   },
   {
-    keywords: ['tour', 'lịch trình', 'du lịch', 'tham quan'],
+    keywords: ['tour', 'lịch trình', 'du lịch', 'tham quan', 'chuyến đi', 'đặt tour'],
+    regex: /tour|du l[iị]ch/i,
     answer: '🗺️ **Tour du lịch tại TravelEasy:**\n- Tour trong nước: Hà Nội, Đà Nẵng, Nha Trang, Phú Quốc...\n- Tour quốc tế: Singapore, Nhật Bản, Hàn Quốc, Châu Âu...\n- Lịch trình rõ ràng, hướng dẫn viên nhiệt tình\n\n👉 Xem tất cả tour tại [Tour du lịch](/tours)!',
   },
   {
     keywords: ['voucher', 'mã giảm giá', 'ưu đãi', 'khuyến mãi', 'discount', 'coupon'],
+    regex: /voucher|m[aã] gi[aả]m gi[aá]|[uư]u đ[aã]i|khuy[eế]n m[aã]i/i,
     answer: '🎟️ **Ưu đãi & Voucher TravelEasy:**\n- **WELCOME10**: Giảm 10% cho đơn đầu tiên\n- **SUMMER2026**: Giảm 15% mùa hè\n- **TOUR500**: Giảm 500K cho tour từ 5 triệu\n- **FLYHIGH**: Giảm 5% vé máy bay\n\n👉 Xem tất cả tại [Ưu đãi](/vouchers)!',
   },
   {
     keywords: ['đặt phòng', 'booking', 'đơn hàng', 'lịch sử'],
+    regex: /l[iị]ch s[uử]|đ[oơ]n h[aà]ng/i,
     answer: '📋 **Quản lý đặt chỗ:**\n- Xem lịch sử đặt phòng/tour/vé tại trang **Lịch sử đơn hàng**\n- Trạng thái đơn: Chờ xác nhận → Đã xác nhận → Hoàn thành\n- Hỗ trợ hủy/thay đổi trong vòng 24h\n\n👉 Kiểm tra tại [Lịch sử đặt chỗ](/bookings)!',
   },
   {
     keywords: ['thanh toán', 'payment', 'trả tiền', 'chuyển khoản'],
+    regex: /thanh to[aá]n|tr[aả] ti[eề]n|chuy[eể]n kho[aả]n/i,
     answer: '💳 **Thanh toán tại TravelEasy:**\n- Thanh toán online an toàn\n- Hỗ trợ thẻ ATM, VISA, MasterCard\n- Ví điện tử: MoMo, ZaloPay, VNPay\n- Giữ chỗ ngay, không cần trả trước toàn bộ',
   },
   {
     keywords: ['đăng ký', 'tạo tài khoản', 'register'],
+    regex: /đ[aă]ng k[yý]|t[aạ]o t[aà]i kho[aả]n/i,
     answer: '📝 **Đăng ký tài khoản TravelEasy:**\n1. Truy cập trang [Đăng ký](/auth/register)\n2. Nhập email và tạo mật khẩu\n3. Xác nhận mã OTP gửi về email\n4. Hoàn tất và bắt đầu đặt chỗ!\n\nHoàn toàn **miễn phí**, không mất phí đăng ký.',
   },
   {
     keywords: ['đăng nhập', 'login', 'quên mật khẩu'],
+    regex: /đ[aă]ng nh[aậ]p|qu[eê]n m[aậ]t kh[aẩ]u/i,
     answer: '🔐 **Đăng nhập TravelEasy:**\n- Truy cập [Đăng nhập](/auth/signin)\n- Nhập email & mật khẩu đã đăng ký\n- Nếu quên mật khẩu: [Quên mật khẩu](/auth/forgot-password)\n\nGặp vấn đề? Liên hệ **1800 6868** hoặc **info@traveleasy.vn**',
   },
   {
     keywords: ['liên hệ', 'hỗ trợ', 'hotline', 'contact'],
+    regex: /li[eê]n h[eệ]|h[oỗ] tr[oợ]/i,
     answer: '📞 **Liên hệ TravelEasy:**\n- 📧 Email: info@traveleasy.vn\n- ☎️ Hotline: **1800 6868** (miễn phí, 24/7)\n- 📍 Địa chỉ: Hà Nội, Việt Nam\n\nĐội ngũ hỗ trợ luôn sẵn sàng phục vụ bạn!',
   },
   {
     keywords: ['giá', 'bao nhiêu', 'chi phí', 'phí', 'tiền'],
+    regex: /gi[aá]|bao nhi[eê]u|chi ph[ií]/i,
     answer: '💰 **Bảng giá tham khảo:**\n- 🏨 Khách sạn: từ **1.5 triệu/đêm**\n- 🗺️ Tour nội địa: từ **2 triệu/người**\n- 🗺️ Tour quốc tế: từ **8 triệu/người**\n- ✈️ Vé nội địa: từ **1 triệu/chiều**\n\nGiá thực tế phụ thuộc ngày đi, mùa vụ và số lượng người.',
   },
   {
-    keywords: ['cảm ơn', 'thanks', 'thank you', 'tuyệt', 'ok', 'được rồi'],
+    keywords: ['cảm ơn', 'thanks', 'thank you', 'tuyệt', 'ok', 'được rồi', 'tuyệt vời'],
+    regex: /c[aả]m [oơ]n|thank|tuy[eệ]t|ok/i,
     answer: '😊 Rất vui khi được giúp bạn! Nếu cần thêm thông tin, đừng ngần ngại hỏi mình nhé. Chúc bạn có chuyến đi thật tuyệt vời! 🌟',
   },
 ];
@@ -92,6 +104,9 @@ const quickReplies = [
 function getBotResponse(text: string): string {
   const lower = text.toLowerCase();
   for (const rule of rules) {
+    if (rule.regex && rule.regex.test(lower)) {
+      return rule.answer;
+    }
     if (rule.keywords.some(kw => lower.includes(kw))) {
       return rule.answer;
     }
@@ -101,12 +116,15 @@ function getBotResponse(text: string): string {
 
 function renderText(text: string) {
   return text.split('\n').map((line, i) => {
-    const parts = line
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" style="color:#1677ff;text-decoration:none;font-weight:600">$1</a>');
+    let htmlLine = line
+      .replace(/^#+\s+(.*)/g, '<strong style="font-size: 1.05em; color: #1677ff;">$1</strong>') // Headers
+      .replace(/^[\*\-]\s+(.*)/g, '<span style="padding-left: 10px;">• $1</span>') // Lists
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') // Bold
+      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" style="color:#1677ff;text-decoration:none;font-weight:600">$1</a>'); // Links
+      
     return (
       <span key={i} style={{ display: 'block', lineHeight: 1.6 }}
-        dangerouslySetInnerHTML={{ __html: parts }} />
+        dangerouslySetInnerHTML={{ __html: htmlLine }} />
     );
   });
 }

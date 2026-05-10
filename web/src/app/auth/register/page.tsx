@@ -206,24 +206,19 @@ export default function Register() {
                    <div className="p-6 bg-blue-50 rounded-2xl border border-blue-100 space-y-2 text-center animate-fade-in-up">
                       <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">Mã OTP đã được gửi đến</p>
                       <p className="text-xl font-black text-slate-900 tracking-tight">{userEmail}</p>
-                      {receivedOtp && (
-                        <div className="mt-4 p-3 bg-white rounded-xl border border-blue-200 font-mono text-2xl font-black text-blue-600 tracking-[0.2em] shadow-sm">
-                           {receivedOtp}
-                        </div>
-                      )}
-                   </div>
+                    </div>
 
-                   <Form.Item
+                 <Form.Item
                     name="otp"
                     rules={[
                       { required: true, message: 'Vui lòng nhập OTP' },
-                      { len: 8, message: 'Mã phải có 8 chữ số' }
+                      { len: 6, message: 'Mã phải có 6 chữ số' }
                     ]}
                   >
                     <Input 
                       prefix={<SafetyCertificateOutlined className="text-slate-400" />} 
                       placeholder="Mã số xác nhận" 
-                      maxLength={8}
+                      maxLength={6}
                       className="h-16 rounded-2xl border-slate-200 bg-white text-center text-2xl font-black tracking-[0.3em] font-mono"
                     />
                   </Form.Item>

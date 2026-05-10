@@ -117,7 +117,7 @@ function ProfileContent() {
       });
 
       if (res.ok) {
-        message.success('Thanh toán thành công qua cổng giả lập!');
+        message.success('Thanh toán thành công!');
         setIsPaymentModalVisible(false);
         setIsModalVisible(false);
         

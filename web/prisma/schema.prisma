@@ -121,6 +121,7 @@ model Booking {
   finalPrice     Float?
   
   status        String   @default("PENDING")
+  adminRead     Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

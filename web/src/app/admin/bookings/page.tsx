@@ -62,6 +62,13 @@ export default function AdminBookingsPage() {
                 console.error(err);
                 setLoading(false);
             });
+        
+        // Mark all as read when viewing this page
+        fetch('/api/bookings/mark-all-read', { method: 'POST' })
+            .then(res => {
+                if (!res.ok) console.error('Failed to mark bookings as read');
+            })
+            .catch(e => console.error(e));
     };
 
     useEffect(() => {

@@ -121,13 +121,13 @@ export default function ForgotPassword() {
                 {step === 2 && (
                     <Form layout="vertical" onFinish={onFinishStep2} autoComplete="off" size="large">
                         <div style={{ textAlign: 'center', marginBottom: 20, color: '#1677ff', background: '#e6f4ff', padding: 10, borderRadius: 8 }}>
-                            Mã OTP của bạn là: <b>11222432</b>
+                            Vui lòng kiểm tra email để lấy mã OTP
                         </div>
                         <Form.Item
                             name="otp"
                             rules={[{ required: true, message: 'Vui lòng nhập mã OTP!' }]}
                         >
-                            <Input placeholder="Nhập mã OTP (11222432)" />
+                            <Input placeholder="Nhập mã OTP 6 chữ số" maxLength={6} />
                         </Form.Item>
                         <Form.Item>
                             <Button type="primary" htmlType="submit" block>

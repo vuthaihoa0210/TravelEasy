@@ -48,6 +48,54 @@ app.use('/api/blogs', blogRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/chat', createChatRouter(io));
 
+// Bookings Notifications (Directly in index.ts to fix 404 issue)
+app.get('/api/bookings/unread-count', async (req: Request, res: Response) => {
+    try {
+        const count = await prisma.booking.count({
+            where: { adminRead: false }
+        });
+        res.json({ count });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch unread count' });
+    }
+});
+
+app.get('/api/bookings/recent-list', async (req: Request, res: Response) => {
+    try {
+        const bookings = await prisma.booking.findMany({
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+            select: {
+                id: true,
+                customerName: true,
+                itemName: true,
+                type: true,
+                createdAt: true,
+                adminRead: true
+            }
+        });
+        res.json(bookings);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch recent list' });
+    }
+});
+
+app.post('/api/bookings/mark-all-read', async (req: Request, res: Response) => {
+    try {
+        await prisma.booking.updateMany({
+            where: { adminRead: false },
+            data: { adminRead: true }
+        });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to mark bookings as read' });
+    }
+});
+
+app.get('/api/test', (req: Request, res: Response) => {
+  res.json({ message: 'API is working' });
+});
+
 app.get('/', (req: Request, res: Response) => {
   res.send('Backend API is running...');
 });

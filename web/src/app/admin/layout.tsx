@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, theme, Button, Typography, message, Spin } from 'antd';
 import {
   DesktopOutlined,
   FileOutlined,
@@ -10,8 +9,10 @@ import {
   ShoppingOutlined,
   GlobalOutlined,
   HomeOutlined,
-  MessageOutlined
+  MessageOutlined,
+  BellOutlined
 } from '@ant-design/icons';
+import { Layout, Menu, theme, Button, Typography, message, Spin, Badge, Space } from 'antd';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -37,6 +38,7 @@ export default function AdminLayout({
       message.error('Bạn không có quyền truy cập trang quản trị');
     }
   }, [status, session, router]);
+
 
   const {
     token: { colorBgContainer, borderRadiusLG },
@@ -74,7 +76,9 @@ export default function AdminLayout({
         <Menu theme="light" defaultSelectedKeys={[selectedKey]} selectedKeys={[selectedKey]} mode="inline" items={items} />
       </Sider>
       <Layout>
-        <Header style={{ padding: 0, background: colorBgContainer }} />
+        <Header style={{ padding: '0 24px', background: colorBgContainer, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          {/* Content moved to global Header */}
+        </Header>
         <Content style={{ margin: '0 16px' }}>
           <div
             style={{

@@ -1,0 +1,13 @@
+node_modules/
+.env
+.next/
+dist/
+*.log
+.DS_Store
+web/.next/
+web/node_modules/
+backend/node_modules/
+backend/dist/
+app/node_modules/
+app/dist/
+prisma/generated-client/
